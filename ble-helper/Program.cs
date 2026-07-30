@@ -64,6 +64,15 @@ while ((line = await Console.In.ReadLineAsync()) != null)
                 connector.Disconnect();
                 break;
 
+            case "watch":
+                CancelScanTimeout();
+                scanner.Watch(BleAddress.FromHex(cmd.Address));
+                break;
+
+            case "stopWatch":
+                scanner.StopWatch();
+                break;
+
             case "quit":
                 Shutdown();
                 break;

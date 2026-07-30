@@ -55,8 +55,10 @@ export class BLEManager extends EventEmitter {
       this.clearHeartbeatTimer()
 
       if (!this.restarting && code !== 0 && code !== null) {
-        // Unexpected exit — notify
-        this.emit('deviceDisconnected')
+        // Unexpected exit — auto-restart and notify
+        console.log('[BLE] helper 异常退出，自动重启...')
+        this.start()
+        this.emit('deviceDisconnected', 'remote')
       }
     })
 
@@ -113,7 +115,7 @@ export class BLEManager extends EventEmitter {
 
   /** Handle a parsed event from the helper */
   private handleEvent(evt: { evt: string; address?: string; name?: string; rssi?: number; raw?: number[]; message?: string; reason?: string }): void {
-    console.log('[BLE] ← helper:', evt.evt)
+    console.log('[BLE] ← helper:', evt.evt, evt.reason ? `(reason: ${evt.reason})` : '')
 
     switch (evt.evt) {
       case 'scanStarted':
@@ -142,7 +144,7 @@ export class BLEManager extends EventEmitter {
 
       case 'disconnected':
         this.clearHeartbeatTimer()
-        this.emit('deviceDisconnected')
+        this.emit('deviceDisconnected', evt.reason || 'unknown')
         break
 
       case 'heartRateData':
@@ -159,6 +161,26 @@ export class BLEManager extends EventEmitter {
       case 'error':
         console.error('[BLE] helper error:', evt.message)
         this.emit('error', new Error(evt.message))
+        break
+
+      case 'watchStarted':
+        console.log('[BLE] watch started for:', evt.address)
+        this.emit('watchStarted', evt.address)
+        break
+
+      case 'watchStopped':
+        console.log('[BLE] watch stopped')
+        this.emit('watchStopped')
+        break
+
+      case 'deviceFound':
+        console.log('[BLE] target device found:', evt.address, evt.name)
+        this.emit('deviceFound', {
+          id: evt.address || '',
+          address: evt.address || '',
+          name: evt.name || 'Unknown',
+          rssi: evt.rssi ?? 0
+        })
         break
 
       case 'log':
@@ -186,6 +208,14 @@ export class BLEManager extends EventEmitter {
 
   disconnect(): void {
     this.send({ cmd: 'disconnect' })
+  }
+
+  watchForDevice(address: string): void {
+    this.send({ cmd: 'watch', address: address.replace(/:/g, '') })
+  }
+
+  stopWatch(): void {
+    this.send({ cmd: 'stopWatch' })
   }
 
   // ── Heart rate parsing & heartbeat timer ──

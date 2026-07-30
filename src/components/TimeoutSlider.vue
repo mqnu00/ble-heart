@@ -1,36 +1,38 @@
 <template>
   <div class="timeout-slider">
     <div class="slider-header">
-      <span class="slider-label">心率丢失超时时间</span>
-      <span class="slider-value">{{ modelValue }} 秒</span>
+      <span class="slider-label">{{ title }}</span>
+      <span class="slider-value">{{ modelValue }} {{ unit }}</span>
     </div>
     <el-slider
       :model-value="modelValue"
-      :min="5"
-      :max="60"
-      :step="5"
-      :marks="marks"
+      :min="min"
+      :max="max"
+      :step="step"
       show-stops
       @update:model-value="$emit('update:modelValue', $event)"
     />
-    <p class="slider-hint">
-      当手表心率信号中断超过设定时间后，自动锁定 Windows
-    </p>
+    <p class="slider-hint">{{ description }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
-const marks = {
-  5: '5s',
-  15: '15s',
-  30: '30s',
-  45: '45s',
-  60: '60s'
-}
-
-defineProps<{
+withDefaults(defineProps<{
   modelValue: number
-}>()
+  title?: string
+  min?: number
+  max?: number
+  step?: number
+  unit?: string
+  description?: string
+}>(), {
+  title: '超时时间',
+  min: 5,
+  max: 60,
+  step: 5,
+  unit: '秒',
+  description: ''
+})
 
 defineEmits<{
   'update:modelValue': [value: number]
@@ -39,6 +41,12 @@ defineEmits<{
 
 <style lang="scss" scoped>
 .timeout-slider {
+  &:not(:first-child) {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
   .slider-header {
     display: flex;
     justify-content: space-between;

@@ -126,8 +126,7 @@ export function useElectron() {
     } catch { /* ignore */ }
     state.value.deviceStatus = 'disconnected'
     state.value.deviceName = null
-    // Clear saved device so the list no longer shows "已连接"
-    await updateConfig({ targetDeviceId: '', targetDeviceName: '' })
+    // 配置清除由主进程根据断开原因处理（user → 清除，remote → 保留以重连）
   }
 
   // ── Config ──

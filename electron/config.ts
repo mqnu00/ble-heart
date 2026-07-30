@@ -4,6 +4,7 @@ interface AppConfig {
   targetDeviceId: string
   targetDeviceName: string
   heartbeatTimeout: number
+  unlockDelay: number
   autoUnlock: boolean
   autoStart: boolean
 }
@@ -13,6 +14,7 @@ const store = new Store<AppConfig>({
     targetDeviceId: '',
     targetDeviceName: '',
     heartbeatTimeout: 15,
+    unlockDelay: 3,
     autoUnlock: false,
     autoStart: false
   }
@@ -23,6 +25,7 @@ export function getConfig(): AppConfig {
     targetDeviceId: store.get('targetDeviceId'),
     targetDeviceName: store.get('targetDeviceName'),
     heartbeatTimeout: store.get('heartbeatTimeout'),
+    unlockDelay: store.get('unlockDelay'),
     autoUnlock: store.get('autoUnlock'),
     autoStart: store.get('autoStart')
   }

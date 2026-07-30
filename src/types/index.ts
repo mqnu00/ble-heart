@@ -10,6 +10,7 @@ export interface AppConfig {
   targetDeviceId: string
   targetDeviceName: string
   heartbeatTimeout: number
+  unlockDelay: number
   autoUnlock: boolean
   autoStart: boolean
   hasPassword: boolean

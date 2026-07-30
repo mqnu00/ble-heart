@@ -5,44 +5,61 @@ namespace BleHelper;
 
 /// <summary>
 /// Wraps BluetoothLEAdvertisementWatcher for BLE device discovery.
-/// Fires Received event on threadpool — no UI message pump needed.
+/// Supports two modes:
+///   - Normal scan: reports all devices (scanStarted / deviceDiscovered / scanStopped)
+///   - Watch mode:   watches for a specific device address, reports only when found (deviceFound)
+/// Uses separate watcher instances so modes don't interfere.
 /// </summary>
 public sealed class BleScanner : IDisposable
 {
-    private readonly BluetoothLEAdvertisementWatcher _watcher;
+    private readonly BluetoothLEAdvertisementWatcher _scanWatcher;
+    private readonly BluetoothLEAdvertisementWatcher _watchWatcher;
     private readonly Action<string> _writeOutput;
     private int _scannedCount;
+    private ulong? _watchAddress;
 
-    public bool IsScanning => _watcher.Status == BluetoothLEAdvertisementWatcherStatus.Started
-                           || _watcher.Status == BluetoothLEAdvertisementWatcherStatus.Created;
+    public bool IsScanning => _scanWatcher.Status == BluetoothLEAdvertisementWatcherStatus.Started
+                           || _scanWatcher.Status == BluetoothLEAdvertisementWatcherStatus.Created;
+
+    public bool IsWatching => _watchAddress.HasValue
+                           && _watchWatcher.Status == BluetoothLEAdvertisementWatcherStatus.Started;
 
     public BleScanner(Action<string> writeOutput)
     {
         _writeOutput = writeOutput;
-        _watcher = new BluetoothLEAdvertisementWatcher
+
+        // Normal scan watcher
+        _scanWatcher = new BluetoothLEAdvertisementWatcher
         {
             ScanningMode = BluetoothLEScanningMode.Active
         };
-        _watcher.Received += OnReceived;
-        _watcher.Stopped += OnStopped;
+        _scanWatcher.Received += OnScanReceived;
+        _scanWatcher.Stopped += OnScanStopped;
+
+        // Watch watcher (passive mode — lower power, sufficient for device re-discovery)
+        _watchWatcher = new BluetoothLEAdvertisementWatcher
+        {
+            ScanningMode = BluetoothLEScanningMode.Passive
+        };
+        _watchWatcher.Received += OnWatchReceived;
+        _watchWatcher.Stopped += OnWatchStopped;
     }
+
+    // ── Normal scan ──
 
     public void Start()
     {
         _scannedCount = 0;
-        _watcher.Start();
+        _scanWatcher.Start();
         WriteEvent(new BleEvent { Evt = "scanStarted" });
     }
 
     public void Stop()
     {
-        if (IsScanning)
-        {
-            _watcher.Stop();
-        }
+        _scanWatcher.Stop();
     }
 
-    private void OnReceived(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
+    private void OnScanReceived(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
     {
         _scannedCount++;
 
@@ -56,10 +73,60 @@ public sealed class BleScanner : IDisposable
         WriteEvent(evt);
     }
 
-    private void OnStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
+    private void OnScanStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
     {
         WriteEvent(new BleEvent { Evt = "scanStopped" });
     }
+
+    // ── Watch mode (targeted device re-discovery) ──
+
+    /// <summary>
+    /// Start watching for a specific device address.
+    /// When the device is seen in advertisements, emits "deviceFound" and stops watching.
+    /// </summary>
+    public void Watch(ulong address)
+    {
+        StopWatch();
+        _watchAddress = address;
+        _watchWatcher.Start();
+        WriteEvent(new BleEvent { Evt = "watchStarted", Address = BleAddress.ToHex(address) });
+    }
+
+    /// <summary>
+    /// Stop watching for the target device.
+    /// </summary>
+    public void StopWatch()
+    {
+        _watchAddress = null;
+        _watchWatcher.Stop();
+    }
+
+    private void OnWatchReceived(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
+    {
+        if (!_watchAddress.HasValue) return;
+
+        if (args.BluetoothAddress == _watchAddress.Value)
+        {
+            // Target device found! Stop watching and report.
+            var addr = _watchAddress.Value;
+            StopWatch();
+
+            WriteEvent(new BleEvent
+            {
+                Evt = "deviceFound",
+                Address = BleAddress.ToHex(addr),
+                Name = args.Advertisement.LocalName ?? "Unknown",
+                Rssi = args.RawSignalStrengthInDBm
+            });
+        }
+    }
+
+    private void OnWatchStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
+    {
+        WriteEvent(new BleEvent { Evt = "watchStopped" });
+    }
+
+    // ── Helpers ──
 
     private void WriteEvent(BleEvent evt)
     {
@@ -77,8 +144,12 @@ public sealed class BleScanner : IDisposable
 
     public void Dispose()
     {
-        _watcher.Received -= OnReceived;
-        _watcher.Stopped -= OnStopped;
-        if (IsScanning) _watcher.Stop();
+        _scanWatcher.Received -= OnScanReceived;
+        _scanWatcher.Stopped -= OnScanStopped;
+        if (IsScanning) _scanWatcher.Stop();
+
+        _watchWatcher.Received -= OnWatchReceived;
+        _watchWatcher.Stopped -= OnWatchStopped;
+        StopWatch();
     }
 }

@@ -21,8 +21,24 @@
         <span>锁屏设置</span>
       </template>
       <TimeoutSlider
+        title="心跳超时"
         :model-value="localTimeout"
+        :min="5"
+        :max="60"
+        :step="5"
+        unit="秒"
+        description="未收到心率数据超过此时长后自动锁屏"
         @update:model-value="localTimeout = $event"
+      />
+      <TimeoutSlider
+        title="解锁确认"
+        :model-value="localUnlockDelay"
+        :min="1"
+        :max="10"
+        :step="1"
+        unit="秒"
+        description="连续收到心率数据超过此时长后自动解锁"
+        @update:model-value="localUnlockDelay = $event"
       />
     </el-card>
 
@@ -159,12 +175,14 @@ const testUnlocking = ref(false)
 
 // Local editing state (not saved until user clicks "保存设置")
 const localTimeout = ref(15)
+const localUnlockDelay = ref(3)
 const localAutoUnlock = ref(false)
 const localAutoStart = ref(false)
 
 // Sync local state from loaded config
 watch(() => config.value, (c) => {
   localTimeout.value = c.heartbeatTimeout
+  localUnlockDelay.value = c.unlockDelay
   localAutoUnlock.value = c.autoUnlock
   localAutoStart.value = c.autoStart
 }, { immediate: true, deep: true })
@@ -236,6 +254,7 @@ async function handleSaveSettings() {
   try {
     await updateConfig({
       heartbeatTimeout: localTimeout.value,
+      unlockDelay: localUnlockDelay.value,
       autoUnlock: localAutoUnlock.value,
       autoStart: localAutoStart.value
     })

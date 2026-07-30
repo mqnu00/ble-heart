@@ -3,6 +3,13 @@ import { stateManager } from './state'
 import { getConfig, setConfig } from './config'
 import { initSafeStorage, savePassword, clearPassword, hasPassword } from './system/safe-storage'
 import { getStore } from './config'
+import { BLEManager } from './ble/manager'
+
+// 由 main.ts 注入，用于配置变更时同步心跳超时
+let bleManagerRef: BLEManager | null = null
+export function setBleManagerRef(mgr: BLEManager | null) {
+  bleManagerRef = mgr
+}
 
 export function registerIpcHandlers(win: BrowserWindow): void {
   // 初始化安全存储
@@ -25,6 +32,13 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   // 设置配置
   ipcMain.handle('setConfig', async (_event, newConfig: any) => {
     setConfig(newConfig)
+    // 配置变更时同步到各模块
+    if (newConfig.heartbeatTimeout !== undefined) {
+      bleManagerRef?.setHeartbeatTimeout(newConfig.heartbeatTimeout * 1000)
+    }
+    if (newConfig.unlockDelay !== undefined) {
+      stateManager.setUnlockDelay(newConfig.unlockDelay)
+    }
     return { success: true }
   })
 

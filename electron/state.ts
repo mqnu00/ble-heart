@@ -24,7 +24,12 @@ class StateManager extends EventEmitter {
   // 冷却期：解锁后短时间内不重新锁屏
   private cooldownUntil = 0
   private unlockConfirmCount = 0
-  private readonly UNLOCK_CONFIRM_REQUIRED = 3
+  private unlockConfirmRequired = 3
+
+  /** 设置解锁确认所需的心率数据次数（由 main.ts 在配置变更时调用） */
+  setUnlockDelay(seconds: number): void {
+    this.unlockConfirmRequired = Math.max(1, seconds)
+  }
 
   getState(): AppState {
     return { ...this.state }
@@ -91,7 +96,7 @@ class StateManager extends EventEmitter {
     }
 
     this.unlockConfirmCount++
-    return this.unlockConfirmCount >= this.UNLOCK_CONFIRM_REQUIRED
+    return this.unlockConfirmCount >= this.unlockConfirmRequired
   }
 
   /**

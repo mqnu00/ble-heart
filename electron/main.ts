@@ -2,12 +2,13 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 
 import { BLEManager } from './ble/manager'
+import { reconnectManager } from './ble/reconnect'
 import { stateManager } from './state'
 import { lockWorkstation, lockDetector } from './system/lock'
 import { triggerUnlock, ensureHodorReady } from './system/unlock'
 import { getConfig, setConfig } from './config'
 import { hasPassword } from './system/safe-storage'
-import { registerIpcHandlers } from './ipc-handlers'
+import { registerIpcHandlers, setBleManagerRef } from './ipc-handlers'
 import { createTray, destroyTray } from './tray'
 import type { HeartRateData } from './ble/types'
 import type { BLEDeviceInfo } from './ble/types'
@@ -55,15 +56,61 @@ function createWindow(): void {
 
 function initBLE(): void {
   bleManager = new BLEManager()
+  setBleManagerRef(bleManager)
 
   // Start the C# BLE helper process
   bleManager.start()
 
   const config = getConfig()
   bleManager.setHeartbeatTimeout(config.heartbeatTimeout * 1000)
+  stateManager.setUnlockDelay(config.unlockDelay)
 
   setupBLEEvents()
+  setupReconnect()
   setupBLEIpc()
+}
+
+/**
+ * 设置重连管理器的回调
+ *
+ * 将 reconnectManager 的抽象操作（连接/监听广播/停止监听）
+ * 绑定到 bleManager 的实际方法。
+ */
+function setupReconnect(): void {
+  if (!bleManager) return
+
+  // 回调：发起连接
+  reconnectManager.onConnect = (address: string) => {
+    bleManager?.connect(address)
+  }
+
+  // 回调：开始监听目标设备广播
+  reconnectManager.onStartWatch = (address: string) => {
+    bleManager?.watchForDevice(address)
+  }
+
+  // 回调：停止监听
+  reconnectManager.onStopWatch = () => {
+    bleManager?.stopWatch()
+  }
+
+  // C# 端广播发现目标设备 → 通知重连管理器
+  bleManager.on('deviceFound', (device: BLEDeviceInfo) => {
+    reconnectManager.onDeviceFound(device.address)
+  })
+
+  // 连接错误（在 connecting 阶段） → 回到广播监听
+  bleManager.on('error', () => {
+    reconnectManager.onConnectFailed()
+  })
+
+  // 重连状态变化 → 同步到渲染进程
+  reconnectManager.on('phaseChange', (phase: string) => {
+    mainWindow?.webContents.send('reconnect-phase-change', phase)
+  })
+  reconnectManager.on('reconnected', (info: { address: string; name: string }) => {
+    mainWindow?.webContents.send('reconnected', info)
+  })
 }
 
 function setupBLEEvents(): void {
@@ -97,17 +144,48 @@ function setupBLEEvents(): void {
     }
   })
 
-  // Device disconnected
-  bleManager.on('deviceDisconnected', () => {
+  // Device disconnected — 区分远程断开 vs 用户主动断开
+  bleManager.on('deviceDisconnected', (reason: string) => {
     stateManager.setDeviceStatus('disconnected')
     stateManager.setDeviceName(null)
-    setConfig({ targetDeviceId: '', targetDeviceName: '' })
+
+    const phase = reconnectManager.phase
+
+    // 重连进行中时，所有断开（包括 reason=user，C# 连接失败内部调用 Disconnect 所致）
+    // 都视为重连流程的一部分，由重连管理器处理。
+    if (phase !== 'idle') {
+      if (phase === 'connecting') {
+        // 连接失败 → 回到广播监听
+        reconnectManager.onConnectFailed()
+      }
+      // watching 阶段收到断开（连接已不存在）→ 忽略，继续监听广播
+      return
+    }
+
+    if (reason === 'user') {
+      // idle 状态下用户主动断开 → 清除配置，不重连，不锁屏
+      reconnectManager.cancel()
+      setConfig({ targetDeviceId: '', targetDeviceName: '' })
+      console.log('[BLE] 用户主动断开，清除设备配置')
+    } else {
+      // idle 状态下远程断开 → 保留配置，启动广播监听 + 触发锁屏
+      const config = getConfig()
+      if (config.targetDeviceId) {
+        reconnectManager.start(config.targetDeviceId, config.targetDeviceName)
+      }
+      // 设备离开 → 2 秒后锁屏
+      if (stateManager.onHeartbeatTimeout()) {
+        setTimeout(() => handleLock(), 2000)
+      }
+    }
   })
 
   // Device connected
   bleManager.on('deviceConnected', (device: { id: string; name: string }) => {
     stateManager.setDeviceStatus('connected')
     stateManager.setDeviceName(device.name)
+    // 重连成功 → 停止重连
+    reconnectManager.onConnected()
   })
 
   // Helper errors
@@ -131,6 +209,8 @@ function setupBLEIpc(): void {
   })
 
   ipcMain.on('ble-connect', (_event, address: string) => {
+    // 用户主动连接新设备 → 取消重连
+    reconnectManager.cancel()
     bleManager?.connect(address)
   })
 
@@ -252,6 +332,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   (app as any).isQuitting = true
+  reconnectManager.stop()
   lockDetector.stopMonitoring()
   destroyTray()
   bleManager?.stop()
