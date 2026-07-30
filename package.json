@@ -5,7 +5,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build && electron-builder",
+    "build": "npm run build:helper && npm run build:vite && electron-builder",
     "build:vite": "vite build",
     "build:helper": "dotnet publish ble-helper/ble-helper.csproj -c Release -o dist-electron/ble-helper",
     "preview": "vite preview",
@@ -37,6 +37,13 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": false,
     "extraResources": [
       {
         "from": "dist-electron/hodor",

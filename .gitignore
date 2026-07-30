@@ -6,6 +6,8 @@ release/
 .env
 *.log
 *.bak
+*.tsbuildinfo
+test-*.mjs
 .sema/
 
 # .NET build artifacts
