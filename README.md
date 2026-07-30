@@ -95,10 +95,14 @@ register.bat
 
 注册后 DLL 由 Windows LogonUI 在锁屏时自动加载，无需额外进程。
 
-### 构建安装包
+### 构建
 
 ```bash
+# 快速构建（免签名，输出到 release/win-unpacked/）
 npm run build
+
+# 构建 NSIS 安装包（需 GitHub 连通以下载 winCodeSign）
+npm run build:nsis
 # 输出: release/BLE Heart Monitor Setup x.x.x.exe
 ```
 
