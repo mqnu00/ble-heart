@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-electron/*
+!dist-electron/hodor/
+release/
+.env
+*.log
+*.bak
+.sema/
+
+# .NET build artifacts
+ble-helper/bin/
+ble-helper/obj/
