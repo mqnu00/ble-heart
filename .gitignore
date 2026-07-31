@@ -6,6 +6,8 @@ release/
 .env
 *.log
 *.bak
+*.rar
+*.zip
 *.tsbuildinfo
 test-*.mjs
 .sema/

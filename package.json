@@ -5,10 +5,12 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "prebuild": "taskkill /F /IM \"BLE Heart Monitor.exe\" >nul 2>&1 || ver >nul",
+    "prebuild:nsis": "taskkill /F /IM \"BLE Heart Monitor.exe\" >nul 2>&1 || ver >nul",
     "build": "npm run build:helper && npm run build:vite && electron-builder --dir",
     "build:nsis": "npm run build:helper && npm run build:vite && electron-builder",
     "build:vite": "vite build",
-    "build:helper": "dotnet publish ble-helper/ble-helper.csproj -c Release -o dist-electron/ble-helper",
+    "build:helper": "dotnet publish ble-helper/ble-helper.csproj -c Release -o dist-electron/ble-helper --self-contained true",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit"
   },
@@ -39,12 +41,17 @@
       "output": "release"
     },
     "files": [
-      "dist-electron/**/*",
+      "dist-electron/main.js",
+      "dist-electron/preload.js",
       "dist/**/*",
-      "node_modules/**/*",
+      "node_modules/**/*.js",
+      "node_modules/**/*.json",
+      "node_modules/**/package.json",
+      "node_modules/koffi/build/koffi/win32_x64/*",
       "package.json"
     ],
     "asar": false,
+    "afterPack": "./scripts/after-pack.js",
     "extraResources": [
       {
         "from": "dist-electron/hodor",
