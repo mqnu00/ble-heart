@@ -26,6 +26,7 @@
     "electron-builder": "^24.9.1",
     "element-plus": "^2.5.5",
     "sass": "^1.70.0",
+    "sharp": "^0.35.3",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "vite-plugin-electron": "^0.28.4",
@@ -51,6 +52,10 @@
       "package.json"
     ],
     "asar": false,
+    "electronDist": "node_modules/electron/dist",
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
     "extraResources": [
       {
         "from": "dist-electron/hodor",
@@ -65,7 +70,7 @@
       "target": "nsis",
       "icon": "public/icon.png",
       "sign": null,
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "forceCodeSigning": false,
     "nsis": {
