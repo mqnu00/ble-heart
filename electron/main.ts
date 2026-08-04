@@ -28,6 +28,8 @@ function createWindow(): void {
     show: true,
     autoHideMenuBar: true,
     title: 'BLE 心率监测',
+    // 开发模式使用项目图标；打包后 exe 自带图标，此处路径不存在时 Electron 静默忽略
+    icon: join(__dirname, '../public/icon.png'),
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,

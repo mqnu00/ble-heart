@@ -1,4 +1,6 @@
 import { Tray, Menu, nativeImage, BrowserWindow } from 'electron'
+import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 import { stateManager, type AppState } from './state'
 
 let tray: Tray | null = null
@@ -30,11 +32,19 @@ export function createTray(window: BrowserWindow): Tray {
 }
 
 function createTrayIcon(): Electron.NativeImage {
-  // 创建一个简单的 16x16 图标
+  // 优先使用应用图标（icon.png），缩放至 Windows 托盘推荐尺寸
+  const iconPath = getAppIconPath()
+  if (iconPath) {
+    const img = nativeImage.createFromPath(iconPath)
+    if (!img.isEmpty()) {
+      return img.resize({ width: 16, height: 16 })
+    }
+  }
+
+  // 兜底：创建一个简单的 16x16 绿色圆点
   const size = 16
   const canvas = Buffer.alloc(size * size * 4)
 
-  // 填充绿色圆形（默认状态）
   const cx = size / 2, cy = size / 2, r = 6
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -58,6 +68,19 @@ function createTrayIcon(): Electron.NativeImage {
     width: size,
     height: size
   })
+}
+
+/**
+ * 获取应用图标路径
+ * - 开发模式:项目根 public/icon.png
+ * - 打包后:resources/app/dist/icon.png（public 目录经 Vite 复制到 dist 的副本）
+ */
+function getAppIconPath(): string {
+  const candidates = [
+    join(__dirname, '../public/icon.png'),
+    join(__dirname, '../dist/icon.png')
+  ]
+  return candidates.find((p) => existsSync(p)) || ''
 }
 
 function updateTrayMenu(): void {

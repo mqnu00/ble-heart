@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- 背景渐变：深蓝 → 青蓝 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3a5c"/>
+      <stop offset="40%" stop-color="#0d7377"/>
+      <stop offset="100%" stop-color="#14a3a8"/>
+    </linearGradient>
+
+    <!-- 心形内部渐隐光晕 -->
+    <radialGradient id="heartGlow" cx="0.5" cy="0.35" r="0.5">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 锁的小渐变 -->
+    <linearGradient id="lockGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0f0f0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底框：圆角方形 -->
+  <rect x="0" y="0" width="256" height="256" rx="56" ry="56" fill="url(#bgGrad)"/>
+
+  <!-- 心形路径 + ECG 线（白色） -->
+  <!-- 心形由贝塞尔曲线绘制，内部嵌入 ECG 折线 -->
+  <g transform="translate(128, 138)">
+    <path d="
+      M 0,20
+      L 0,-10
+      A 38,38 0 0,0 -60,-50
+      A 38,38 0 0,0 -50,-90
+      A 55,55 0 0,0 0,-55
+      A 55,55 0 0,0 50,-90
+      A 38,38 0 0,0 60,-50
+      A 38,38 0 0,0 0,-10
+      Z
+    " fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round"/>
+
+    <!-- ECG 线 -->
+    <polyline points="-36,4 -28,4 -28,4 -25,16 -22,4 -12,4 -9,-18 -6,4 0,4 0,4 3,-18 6,4 10,4 13,-18 16,4 26,4 29,-18 32,4 36,4"
+      fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- 高光 -->
+  <rect x="0" y="0" width="256" height="256" rx="56" ry="56" fill="url(#heartGlow)"/>
+
+  <!-- 蓝牙符文（右下角装饰） -->
+  <g transform="translate(200, 194) scale(0.68)">
+    <path d="
+      M 0,-28
+      L 16,-12
+      L 32,-28
+      L 16,-4
+      L 32,20
+      L 16,4
+      L 0,20
+      L 16,-4
+      L 0,-28
+      Z
+    " fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linejoin="round" opacity="0.5"/>
+  </g>
+
+  <!-- 锁（左上角装饰） -->
+  <g transform="translate(76, 64) scale(0.55)">
+    <rect x="-14" y="-4" width="28" height="24" rx="4" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-opacity="0.4"/>
+    <path d="M -8,-4 L -8,-10 A 8,8 0 0,1 8,-10 L 8,-4" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-opacity="0.4"/>
+    <circle cx="0" cy="8" r="2.5" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+</svg>
