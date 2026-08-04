@@ -9,6 +9,7 @@
       :min="min"
       :max="max"
       :step="step"
+      :disabled="disabled"
       show-stops
       @update:model-value="$emit('update:modelValue', $event)"
     />
@@ -25,13 +26,15 @@ withDefaults(defineProps<{
   step?: number
   unit?: string
   description?: string
+  disabled?: boolean
 }>(), {
   title: '超时时间',
   min: 5,
   max: 60,
   step: 5,
   unit: '秒',
-  description: ''
+  description: '',
+  disabled: false
 })
 
 defineEmits<{

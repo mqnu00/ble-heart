@@ -46,5 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Test lock / unlock
   testLock: () => ipcRenderer.invoke('test-lock'),
-  testUnlock: () => ipcRenderer.invoke('test-unlock')
+  testUnlock: () => ipcRenderer.invoke('test-unlock'),
+
+  // ── Hodor 解锁组件（UnlockProvider.dll）──
+  getHodorStatus: () => ipcRenderer.invoke('hodor-status'),
+  installHodor: () => ipcRenderer.invoke('hodor-install'),
+  uninstallHodor: () => ipcRenderer.invoke('hodor-uninstall')
 })

@@ -38,6 +38,7 @@
         :step="1"
         unit="秒"
         description="连续收到心率数据超过此时长后自动解锁"
+        :disabled="!hodorInstalled"
         @update:model-value="localUnlockDelay = $event"
       />
     </el-card>
@@ -49,11 +50,43 @@
       <div class="security-section">
         <div class="setting-row">
           <div class="setting-info">
+            <span class="setting-label">解锁组件</span>
+            <span class="setting-desc">UnlockProvider.dll 凭据提供程序，用于锁屏界面自动解锁</span>
+          </div>
+          <div class="hodor-actions">
+            <el-tag :type="hodorInstalled ? 'success' : 'warning'" size="small" effect="plain">
+              {{ hodorInstalled ? '已安装' : '未安装' }}
+            </el-tag>
+            <el-button
+              v-if="!hodorInstalled"
+              type="primary"
+              size="small"
+              :loading="hodorBusy"
+              @click="handleInstallHodor"
+            >
+              安装
+            </el-button>
+            <el-button
+              v-else
+              type="danger"
+              size="small"
+              plain
+              :loading="hodorBusy"
+              @click="handleUninstallHodor"
+            >
+              卸载
+            </el-button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
             <span class="setting-label">自动解锁</span>
             <span class="setting-desc">心率恢复后自动解锁 Windows</span>
           </div>
           <el-switch
             :model-value="localAutoUnlock"
+            :disabled="!hodorInstalled"
             @update:model-value="handleAutoUnlockChange"
           />
         </div>
@@ -70,6 +103,7 @@
               v-if="!showPasswordInput"
               :type="config.hasPassword ? 'warning' : 'primary'"
               size="small"
+              :disabled="!hodorInstalled"
               @click="showPasswordInput = true"
             >
               {{ config.hasPassword ? '修改密码' : '设置密码' }}
@@ -79,6 +113,7 @@
               type="danger"
               size="small"
               plain
+              :disabled="!hodorInstalled"
               @click="handleClearPassword"
             >
               清除密码
@@ -139,7 +174,14 @@
             <span class="test-label">测试解锁</span>
             <span class="test-desc">验证自动解锁功能是否正常（需先设置密码）</span>
           </div>
-          <el-button type="success" plain size="small" @click="handleTestUnlock" :loading="testUnlocking">
+          <el-button
+            type="success"
+            plain
+            size="small"
+            :disabled="!hodorInstalled"
+            :loading="testUnlocking"
+            @click="handleTestUnlock"
+          >
             解锁测试
           </el-button>
         </div>
@@ -155,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useElectron } from '@/composables/useElectron'
 import DeviceScan from '@/components/DeviceScan.vue'
@@ -172,6 +214,13 @@ const passwordInput = ref('')
 const saving = ref(false)
 const testLocking = ref(false)
 const testUnlocking = ref(false)
+
+// ── hodor 解锁组件状态 ──
+const hodorStatus = ref<{ registered: boolean; dllInstalled: boolean; admin: boolean } | null>(null)
+const hodorInstalled = computed(
+  () => !!hodorStatus.value && hodorStatus.value.registered && hodorStatus.value.dllInstalled
+)
+const hodorBusy = ref(false)
 
 // Local editing state (not saved until user clicks "保存设置")
 const localTimeout = ref(15)
@@ -248,6 +297,74 @@ async function handleClearPassword() {
   await clearPassword()
   ElMessage.success('密码已清除')
 }
+
+// ── hodor 解锁组件安装/卸载 ──
+
+async function loadHodorStatus() {
+  if (!window.electronAPI) return
+  hodorStatus.value = await window.electronAPI.getHodorStatus()
+}
+
+async function handleInstallHodor() {
+  try {
+    await ElMessageBox.confirm(
+      'UnlockProvider.dll 是 Windows 凭据提供程序（Credential Provider）。\n\n' +
+        '安装后，本应用可在锁屏界面通过命名管道向它发送解锁命令，实现自动解锁。\n\n' +
+        '安装需要将 DLL 复制到 C:\\Windows\\System32 并写入 HKLM 注册表，将请求管理员权限。',
+      '安装解锁组件',
+      { confirmButtonText: '继续安装', cancelButtonText: '取消', type: 'info' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  hodorBusy.value = true
+  try {
+    const result = await window.electronAPI.installHodor()
+    if (result.success) {
+      ElMessage.success(result.message)
+    } else {
+      ElMessage.warning(result.message)
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '安装失败')
+  } finally {
+    hodorBusy.value = false
+    await loadHodorStatus()
+  }
+}
+
+async function handleUninstallHodor() {
+  try {
+    await ElMessageBox.confirm(
+      '卸载后将无法使用自动解锁、测试解锁等功能，确定卸载？',
+      '卸载解锁组件',
+      { confirmButtonText: '确定卸载', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  hodorBusy.value = true
+  try {
+    const result = await window.electronAPI.uninstallHodor()
+    if (result.success) {
+      ElMessage.success(result.message)
+      // 卸载后自动解锁配置已失效，关闭该开关并收起密码输入
+      await updateConfig({ autoUnlock: false })
+      showPasswordInput.value = false
+    } else {
+      ElMessage.warning(result.message)
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '卸载失败')
+  } finally {
+    hodorBusy.value = false
+    await loadHodorStatus()
+  }
+}
+
+onMounted(loadHodorStatus)
 
 async function handleSaveSettings() {
   saving.value = true
@@ -363,6 +480,12 @@ async function handleTestUnlock() {
 .password-actions {
   display: flex;
   gap: 8px;
+}
+
+.hodor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .password-input-row {

@@ -50,6 +50,15 @@ declare global {
       // Test lock / unlock
       testLock: () => Promise<{ success: boolean; message?: string }>
       testUnlock: () => Promise<{ success: boolean; message?: string }>
+
+      // Hodor 解锁组件（UnlockProvider.dll）
+      getHodorStatus: () => Promise<{
+        registered: boolean
+        dllInstalled: boolean
+        admin: boolean
+      }>
+      installHodor: () => Promise<{ success: boolean; message: string }>
+      uninstallHodor: () => Promise<{ success: boolean; message: string }>
     }
   }
 }

@@ -4,6 +4,8 @@ import { getConfig, setConfig } from './config'
 import { initSafeStorage, savePassword, clearPassword, hasPassword } from './system/safe-storage'
 import { getStore } from './config'
 import { BLEManager } from './ble/manager'
+import { isRegistered, isDllInstalled, isAdmin } from './system/hodor-registry'
+import { relaunchAsAdmin } from './system/elevate'
 
 // 由 main.ts 注入，用于配置变更时同步心跳超时
 let bleManagerRef: BLEManager | null = null
@@ -55,6 +57,27 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   ipcMain.handle('clearPassword', async () => {
     clearPassword()
     return { success: true }
+  })
+
+  // ── hodor 解锁组件（UnlockProvider.dll）──
+
+  // 查询解锁组件安装状态
+  ipcMain.handle('hodor-status', () => {
+    return {
+      registered: isRegistered(),
+      dllInstalled: isDllInstalled(),
+      admin: isAdmin()
+    }
+  })
+
+  // 安装解锁组件（UAC 提权）
+  ipcMain.handle('hodor-install', async () => {
+    return relaunchAsAdmin('install')
+  })
+
+  // 卸载解锁组件（UAC 提权）
+  ipcMain.handle('hodor-uninstall', async () => {
+    return relaunchAsAdmin('uninstall')
   })
 
   // 状态推送

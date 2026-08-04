@@ -5,7 +5,8 @@ import { BLEManager } from './ble/manager'
 import { reconnectManager } from './ble/reconnect'
 import { stateManager } from './state'
 import { lockWorkstation, lockDetector } from './system/lock'
-import { triggerUnlock, ensureHodorReady } from './system/unlock'
+import { triggerUnlock, ensureHodorReady, registerHodor, unregisterHodor } from './system/unlock'
+import { writeHodorResult } from './system/elevate'
 import { getConfig, setConfig } from './config'
 import { hasPassword } from './system/safe-storage'
 import { registerIpcHandlers, setBleManagerRef } from './ipc-handlers'
@@ -298,33 +299,82 @@ function initIPC(): void {
   registerIpcHandlers(mainWindow)
 }
 
-app.whenReady().then(() => {
-  createWindow()
-  initBLE()
-  initIPC()
-  initLockDetection()
+// ============================================================
+// 启动入口：hodor worker 模式 vs 正常应用模式
+// ============================================================
 
-  if (mainWindow) {
-    createTray(mainWindow)
-  }
+/**
+ * hodor worker 模式：以管理员权限提权启动的独立进程，
+ * 仅执行解锁组件安装/卸载并写入结果文件后退出，不创建窗口。
+ */
+const hodorAction = getHodorWorkerAction()
 
-  // 确保 hodor DLL 已注册（需要管理员权限）
-  ensureHodorReady().then((ready) => {
-    if (ready) {
-      console.log('[hodor] 解锁组件已就绪')
+if (hodorAction) {
+  runHodorWorker(hodorAction)
+} else {
+  initApp()
+  initSingleInstance()
+}
+
+/**
+ * 解析启动参数，判断是否为 hodor worker 模式
+ */
+function getHodorWorkerAction(): 'install' | 'uninstall' | null {
+  if (process.argv.includes('--hodor-install')) return 'install'
+  if (process.argv.includes('--hodor-uninstall')) return 'uninstall'
+  return null
+}
+
+/**
+ * 以 worker 模式执行 hodor 安装/卸载，将结果写入临时文件后退出
+ */
+async function runHodorWorker(action: 'install' | 'uninstall'): Promise<void> {
+  try {
+    if (action === 'install') {
+      await registerHodor()
+      writeHodorResult(action, true, '解锁组件安装成功')
     } else {
-      console.warn('[hodor] 解锁组件未注册，无法自动解锁。请以管理员权限重启应用。')
+      await unregisterHodor()
+      writeHodorResult(action, true, '解锁组件卸载成功')
     }
-  })
+  } catch (err: any) {
+    writeHodorResult(action, false, err.message || '操作失败')
+  }
+  app.exit(0)
+}
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    } else if (mainWindow) {
-      mainWindow.show()
+/**
+ * 正常应用模式：创建窗口、初始化各模块
+ */
+function initApp(): void {
+  app.whenReady().then(() => {
+    createWindow()
+    initBLE()
+    initIPC()
+    initLockDetection()
+
+    if (mainWindow) {
+      createTray(mainWindow)
     }
+
+    // 确保 hodor DLL 已注册（需要管理员权限）
+    ensureHodorReady().then((ready) => {
+      if (ready) {
+        console.log('[hodor] 解锁组件已就绪')
+      } else {
+        console.warn('[hodor] 解锁组件未注册，无法自动解锁。请以管理员权限重启应用。')
+      }
+    })
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow()
+      } else if (mainWindow) {
+        mainWindow.show()
+      }
+    })
   })
-})
+}
 
 app.on('window-all-closed', () => {
   // Don't quit; stay in tray
@@ -341,16 +391,20 @@ app.on('before-quit', () => {
   }
 })
 
-// Prevent multiple instances
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-    }
-  })
+/**
+ * 防止多实例（仅正常应用模式调用）
+ */
+function initSingleInstance(): void {
+  const gotLock = app.requestSingleInstanceLock()
+  if (!gotLock) {
+    app.quit()
+  } else {
+    app.on('second-instance', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    })
+  }
 }
