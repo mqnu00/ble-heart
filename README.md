@@ -68,6 +68,12 @@
 
 ### 开发运行
 
+> **安装依赖备注（electron 二进制镜像）**
+> `npm install` 时 electron 包的 postinstall 会从 GitHub 下载约 100MB 的二进制文件，
+> 国内网络常超时失败。项目已在 `.npmrc` 配置 `electron_mirror` 自动走 npmmirror 镜像：
+> `https://registry.npmmirror.com/binary.html?path=electron/`
+> 无需手动设置。若其他依赖下载慢，可临时加 `--registry=https://registry.npmmirror.com`（其他依赖随便，走默认 registry 亦可）。
+
 ```bash
 # 安装依赖
 npm install
