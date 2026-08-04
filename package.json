@@ -51,7 +51,6 @@
       "package.json"
     ],
     "asar": false,
-    "afterPack": "./scripts/after-pack.js",
     "extraResources": [
       {
         "from": "dist-electron/hodor",
