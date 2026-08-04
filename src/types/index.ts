@@ -4,6 +4,8 @@ export interface AppState {
   lockState: 'unlocked' | 'pending' | 'locked'
   lastBeatTime: number
   deviceName: string | null
+  rssi: number | null
+  rssiMonitorStatus: 'idle' | 'monitoring'
 }
 
 export interface AppConfig {
@@ -14,6 +16,8 @@ export interface AppConfig {
   autoUnlock: boolean
   autoStart: boolean
   hasPassword: boolean
+  rssiLockThreshold: number
+  rssiUnlockThreshold: number
 }
 
 export interface BLEDevice {

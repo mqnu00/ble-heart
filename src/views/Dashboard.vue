@@ -43,6 +43,17 @@
             size="small"
           >{{ lockText }}</el-tag>
         </div>
+        <div class="info-row" v-if="config.targetDeviceId">
+          <span class="label">RSSI 监听</span>
+          <span class="value">
+            {{ config.targetDeviceName }}
+            <el-tag
+              :type="rssiTagType(state.rssi ?? -100)"
+              size="small"
+              effect="plain"
+            >{{ state.rssi !== null ? state.rssi + ' dBm' : '等待...' }}</el-tag>
+          </span>
+        </div>
       </el-card>
 
       <el-card class="info-card" shadow="hover">
@@ -105,6 +116,12 @@ const lockText = computed(() => {
     default: return '已解锁'
   }
 })
+
+function rssiTagType(rssi: number): string {
+  if (rssi > -60) return 'success'
+  if (rssi > -80) return 'warning'
+  return 'danger'
+}
 </script>
 
 <style lang="scss" scoped>

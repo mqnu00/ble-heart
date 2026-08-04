@@ -18,14 +18,19 @@ declare global {
         lockState: 'unlocked' | 'pending' | 'locked'
         lastBeatTime: number
         deviceName: string | null
+        rssi: number | null
+        rssiMonitorStatus: 'idle' | 'monitoring'
       }>
       getConfig: () => Promise<{
         targetDeviceId: string
         targetDeviceName: string
         heartbeatTimeout: number
+        unlockDelay: number
         autoUnlock: boolean
         autoStart: boolean
         hasPassword: boolean
+        rssiLockThreshold: number
+        rssiUnlockThreshold: number
       }>
       setConfig: (config: Record<string, unknown>) => Promise<{ success: boolean }>
       setPassword: (password: string) => Promise<{ success: boolean }>
@@ -45,7 +50,12 @@ declare global {
       onBleScanStarted: (callback: () => void) => void
       onBleScanStopped: (callback: () => void) => void
       onBleDeviceDiscovered: (callback: (device: { id: string; address: string; name: string; rssi: number }) => void) => void
+      onBleRssiUpdate: (callback: (sample: { address: string; name: string; rssi: number; timestamp: number }) => void) => void
       removeBleListeners: () => void
+
+      // RSSI monitor commands
+      bleStartRssiMonitor: (address: string) => void
+      bleStopRssiMonitor: () => void
 
       // Test lock / unlock
       testLock: () => Promise<{ success: boolean; message?: string }>

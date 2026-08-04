@@ -7,15 +7,20 @@ export function useElectron() {
     deviceStatus: 'disconnected',
     lockState: 'unlocked',
     lastBeatTime: 0,
-    deviceName: null
+    deviceName: null,
+    rssi: null,
+    rssiMonitorStatus: 'idle'
   })
   const config = ref<AppConfig>({
     targetDeviceId: '',
     targetDeviceName: '',
     heartbeatTimeout: 15,
+    unlockDelay: 3,
     autoUnlock: false,
     autoStart: false,
-    hasPassword: false
+    hasPassword: false,
+    rssiLockThreshold: -80,
+    rssiUnlockThreshold: -70
   })
   const devices = ref<BLEDevice[]>([])
   const scanning = ref(false)

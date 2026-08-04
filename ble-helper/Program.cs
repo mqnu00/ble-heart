@@ -73,6 +73,16 @@ while ((line = await Console.In.ReadLineAsync()) != null)
                 scanner.StopWatch();
                 break;
 
+            case "monitorRssi":
+                // RSSI monitoring runs independently (its own watcher),
+                // no need to cancel scan timeout or stop scan.
+                scanner.StartRssiMonitor(BleAddress.FromHex(cmd.Address));
+                break;
+
+            case "stopRssiMonitor":
+                scanner.StopRssiMonitor();
+                break;
+
             case "quit":
                 Shutdown();
                 break;

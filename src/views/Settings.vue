@@ -13,13 +13,59 @@
         @scan="handleScan"
         @connect="handleConnect"
         @disconnect="handleDisconnect"
-      />
+        @monitor="handleMonitor"
+      >
+        <template #actions>
+          <!-- RSSI 监听状态,显示在心率设备断开按钮右侧 -->
+          <div class="rssi-monitor" v-if="config.targetDeviceId">
+            <span class="rssi-monitor-name">{{ config.targetDeviceName }}</span>
+            <el-tag :type="rssiTagType(state.rssi ?? -100)" size="small" effect="plain">
+              {{ state.rssi !== null ? state.rssi + ' dBm' : '等待...' }}
+            </el-tag>
+            <el-button type="danger" size="small" plain @click="handleStopRssi">
+              停止监听
+            </el-button>
+          </div>
+        </template>
+      </DeviceScan>
     </el-card>
 
     <el-card class="settings-card" shadow="hover">
       <template #header>
         <span>锁屏设置</span>
       </template>
+      <div class="timeout-slider">
+        <div class="slider-header">
+          <span class="slider-label">锁屏阈值</span>
+          <span class="slider-value">{{ localRssiLockThreshold }} dBm</span>
+        </div>
+        <el-slider
+          :model-value="localRssiLockThreshold"
+          :min="-100"
+          :max="-40"
+          :step="5"
+          show-stops
+          @update:model-value="localRssiLockThreshold = $event"
+        />
+        <p class="slider-hint">信号低于此阈值持续超时后自动锁屏</p>
+      </div>
+
+      <div class="timeout-slider">
+        <div class="slider-header">
+          <span class="slider-label">恢复阈值</span>
+          <span class="slider-value">{{ localRssiUnlockThreshold }} dBm</span>
+        </div>
+        <el-slider
+          :model-value="localRssiUnlockThreshold"
+          :min="-100"
+          :max="-40"
+          :step="5"
+          show-stops
+          @update:model-value="localRssiUnlockThreshold = $event"
+        />
+        <p class="slider-hint">信号高于此阈值持续后自动解锁（应大于锁屏阈值以避抖动）</p>
+      </div>
+
       <TimeoutSlider
         title="心跳超时"
         :model-value="localTimeout"
@@ -27,7 +73,7 @@
         :max="60"
         :step="5"
         unit="秒"
-        description="未收到心率数据超过此时长后自动锁屏"
+        description="未收到心率数据或 RSSI 信号弱持续此时长后自动锁屏"
         @update:model-value="localTimeout = $event"
       />
       <TimeoutSlider
@@ -37,7 +83,7 @@
         :max="10"
         :step="1"
         unit="秒"
-        description="连续收到心率数据超过此时长后自动解锁"
+        description="连续收到心率数据或 RSSI 信号恢复持续此时长后自动解锁"
         :disabled="!hodorInstalled"
         @update:model-value="localUnlockDelay = $event"
       />
@@ -227,6 +273,8 @@ const localTimeout = ref(15)
 const localUnlockDelay = ref(3)
 const localAutoUnlock = ref(false)
 const localAutoStart = ref(false)
+const localRssiLockThreshold = ref(-80)
+const localRssiUnlockThreshold = ref(-70)
 
 // Sync local state from loaded config
 watch(() => config.value, (c) => {
@@ -234,6 +282,8 @@ watch(() => config.value, (c) => {
   localUnlockDelay.value = c.unlockDelay
   localAutoUnlock.value = c.autoUnlock
   localAutoStart.value = c.autoStart
+  localRssiLockThreshold.value = c.rssiLockThreshold
+  localRssiUnlockThreshold.value = c.rssiUnlockThreshold
 }, { immediate: true, deep: true })
 
 async function handleScan() {
@@ -261,6 +311,27 @@ async function handleConnect(deviceId: string) {
 async function handleDisconnect() {
   await disconnectDevice()
   ElMessage.info('设备已断开')
+}
+
+async function handleMonitor(deviceId: string) {
+  const device = devices.value.find(d => d.id === deviceId || d.address === deviceId)
+  if (!device) {
+    ElMessage.warning('设备信息丢失，请重新扫描')
+    return
+  }
+  await updateConfig({
+    targetDeviceId: deviceId,
+    targetDeviceName: device.name
+  })
+  ElMessage.success(`开始监听信号: ${device.name}`)
+}
+
+async function handleStopRssi() {
+  await updateConfig({
+    targetDeviceId: '',
+    targetDeviceName: ''
+  })
+  ElMessage.info('已停止 RSSI 监听')
 }
 
 async function handleAutoUnlockChange(value: boolean) {
@@ -366,6 +437,12 @@ async function handleUninstallHodor() {
 
 onMounted(loadHodorStatus)
 
+function rssiTagType(rssi: number): string {
+  if (rssi > -60) return 'success'
+  if (rssi > -80) return 'warning'
+  return 'danger'
+}
+
 async function handleSaveSettings() {
   saving.value = true
   try {
@@ -373,7 +450,9 @@ async function handleSaveSettings() {
       heartbeatTimeout: localTimeout.value,
       unlockDelay: localUnlockDelay.value,
       autoUnlock: localAutoUnlock.value,
-      autoStart: localAutoStart.value
+      autoStart: localAutoStart.value,
+      rssiLockThreshold: localRssiLockThreshold.value,
+      rssiUnlockThreshold: localRssiUnlockThreshold.value
     })
     ElMessage.success('设置已保存')
   } catch (err: any) {
@@ -445,6 +524,45 @@ async function handleTestUnlock() {
   }
 }
 
+// RSSI 阈值滑块样式（锁屏设置卡片内联使用）
+.timeout-slider {
+  &:not(:first-child) {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .slider-label {
+      color: $text-color;
+      font-size: 14px;
+    }
+
+    .slider-value {
+      color: $primary-color;
+      font-size: 16px;
+      font-weight: 600;
+    }
+  }
+
+  .slider-hint {
+    margin-top: 12px;
+    color: $text-secondary;
+    font-size: 12px;
+  }
+
+  :deep(.el-slider) {
+    --el-slider-main-bg-color: #{$primary-color};
+    --el-slider-runway-bg-color: rgba(255, 255, 255, 0.1);
+    --el-slider-stop-bg-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
 .setting-row {
   display: flex;
   justify-content: space-between;
@@ -486,6 +604,24 @@ async function handleTestUnlock() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.rssi-monitor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+
+  .rssi-monitor-name {
+    color: $text-secondary;
+    font-size: 12px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .password-input-row {

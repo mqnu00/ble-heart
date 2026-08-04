@@ -2,6 +2,7 @@ import { Tray, Menu, nativeImage, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { stateManager, type AppState } from './state'
+import { rssiMonitor } from './ble/rssi-monitor'
 
 let tray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
@@ -101,7 +102,13 @@ function updateTrayMenu(): void {
       ? ' [即将锁定]'
       : ''
 
-  tray.setToolTip(`BLE 心率监测 - ${statusText}${lockText}`)
+  // RSSI 监听信息
+  const rssi = rssiMonitor.getState()
+  const rssiText = rssi.monitorStatus === 'monitoring'
+    ? ` | RSSI: ${rssi.deviceName || '设备'} ${rssi.rssi !== null ? rssi.rssi + 'dBm' : '等待信号'}`
+    : ''
+
+  tray.setToolTip(`BLE 心率监测 - ${statusText}${lockText}${rssiText}`)
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -112,6 +119,12 @@ function updateTrayMenu(): void {
       label: `心率: ${state.heartRate !== null ? state.heartRate + ' BPM' : '--'}`,
       enabled: false
     },
+    ...(rssi.monitorStatus === 'monitoring'
+      ? [{
+          label: `RSSI 监听: ${rssi.deviceName || '设备'} ${rssi.rssi !== null ? rssi.rssi + ' dBm' : '等待信号'}`,
+          enabled: false
+        }]
+      : []),
     { type: 'separator' },
     {
       label: '显示窗口',

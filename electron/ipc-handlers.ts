@@ -6,6 +6,7 @@ import { getStore } from './config'
 import { BLEManager } from './ble/manager'
 import { isRegistered, isDllInstalled, isAdmin } from './system/hodor-registry'
 import { relaunchAsAdmin } from './system/elevate'
+import { rssiMonitor } from './ble/rssi-monitor'
 
 // 由 main.ts 注入，用于配置变更时同步心跳超时
 let bleManagerRef: BLEManager | null = null
@@ -40,7 +41,25 @@ export function registerIpcHandlers(win: BrowserWindow): void {
     }
     if (newConfig.unlockDelay !== undefined) {
       stateManager.setUnlockDelay(newConfig.unlockDelay)
+      rssiMonitor.applyConfig({ unlockConfirmMs: newConfig.unlockDelay * 1000 })
     }
+
+    // RSSI 配置同步
+    if (newConfig.rssiLockThreshold !== undefined) {
+      rssiMonitor.applyConfig({ rssiLockThreshold: newConfig.rssiLockThreshold })
+    }
+    if (newConfig.rssiUnlockThreshold !== undefined) {
+      rssiMonitor.applyConfig({ rssiUnlockThreshold: newConfig.rssiUnlockThreshold })
+    }
+    if (newConfig.heartbeatTimeout !== undefined) {
+      rssiMonitor.applyConfig({ weakTimeoutMs: newConfig.heartbeatTimeout * 1000 })
+    }
+
+    // 目标设备变更 → 启动/停止 C# 侧监听(设备唯一,连接或监听共用)
+    if (newConfig.targetDeviceId !== undefined) {
+      syncRssiMonitor()
+    }
+
     return { success: true }
   })
 
@@ -96,4 +115,26 @@ export function registerIpcHandlers(win: BrowserWindow): void {
       ;(ipcMain as any)._stateHandler = null
     }
   })
+
+  // ── RSSI 监听同步辅助 ──
+
+  function syncRssiMonitor(): void {
+    const config = getConfig()
+    if (config.targetDeviceId) {
+      rssiMonitor.start(config.targetDeviceId, config.targetDeviceName, {
+        rssiLockThreshold: config.rssiLockThreshold,
+        rssiUnlockThreshold: config.rssiUnlockThreshold,
+        weakTimeoutMs: config.heartbeatTimeout * 1000,
+        unlockConfirmMs: config.unlockDelay * 1000
+      })
+      bleManagerRef?.startRssiMonitor(config.targetDeviceId)
+      stateManager.setRssiMonitorStatus('monitoring')
+      console.log('[RSSI] 监听已启动:', config.targetDeviceName, `(${config.targetDeviceId})`)
+    } else {
+      rssiMonitor.stop()
+      bleManagerRef?.stopRssiMonitor()
+      stateManager.setRssiMonitorStatus('idle')
+      stateManager.setRssi(null)
+    }
+  }
 }

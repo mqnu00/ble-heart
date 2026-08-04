@@ -7,6 +7,8 @@ interface AppConfig {
   unlockDelay: number
   autoUnlock: boolean
   autoStart: boolean
+  rssiLockThreshold: number
+  rssiUnlockThreshold: number
 }
 
 const store = new Store<AppConfig>({
@@ -16,7 +18,9 @@ const store = new Store<AppConfig>({
     heartbeatTimeout: 15,
     unlockDelay: 3,
     autoUnlock: false,
-    autoStart: false
+    autoStart: false,
+    rssiLockThreshold: -80,
+    rssiUnlockThreshold: -70
   }
 })
 
@@ -27,7 +31,9 @@ export function getConfig(): AppConfig {
     heartbeatTimeout: store.get('heartbeatTimeout'),
     unlockDelay: store.get('unlockDelay'),
     autoUnlock: store.get('autoUnlock'),
-    autoStart: store.get('autoStart')
+    autoStart: store.get('autoStart'),
+    rssiLockThreshold: store.get('rssiLockThreshold'),
+    rssiUnlockThreshold: store.get('rssiUnlockThreshold')
   }
 }
 

@@ -37,11 +37,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('ble-device-discovered', (_event, device) => callback(device))
   },
 
+  // RSSI monitor events (main → renderer)
+  onBleRssiUpdate: (callback: (sample: { address: string; name: string; rssi: number; timestamp: number }) => void) => {
+    ipcRenderer.on('ble-rssi-update', (_event, sample) => callback(sample))
+  },
+
+  // RSSI monitor commands
+  bleStartRssiMonitor: (address: string) => ipcRenderer.send('ble-start-rssi-monitor', address),
+  bleStopRssiMonitor: () => ipcRenderer.send('ble-stop-rssi-monitor'),
+
   // Cleanup all BLE listeners
   removeBleListeners: () => {
     ipcRenderer.removeAllListeners('ble-scan-started')
     ipcRenderer.removeAllListeners('ble-scan-stopped')
     ipcRenderer.removeAllListeners('ble-device-discovered')
+    ipcRenderer.removeAllListeners('ble-rssi-update')
   },
 
   // Test lock / unlock

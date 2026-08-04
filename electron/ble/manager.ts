@@ -183,6 +183,25 @@ export class BLEManager extends EventEmitter {
         })
         break
 
+      case 'rssiUpdate':
+        this.emit('rssiUpdate', {
+          address: evt.address || '',
+          name: evt.name || 'Unknown',
+          rssi: evt.rssi ?? 0,
+          timestamp: Date.now()
+        })
+        break
+
+      case 'rssiMonitorStarted':
+        console.log('[BLE] RSSI monitor started for:', evt.address)
+        this.emit('rssiMonitorStarted', evt.address)
+        break
+
+      case 'rssiMonitorStopped':
+        console.log('[BLE] RSSI monitor stopped')
+        this.emit('rssiMonitorStopped')
+        break
+
       case 'log':
         console.log('[BLE helper]', evt.message)
         break
@@ -216,6 +235,14 @@ export class BLEManager extends EventEmitter {
 
   stopWatch(): void {
     this.send({ cmd: 'stopWatch' })
+  }
+
+  startRssiMonitor(address: string): void {
+    this.send({ cmd: 'monitorRssi', address: address.replace(/:/g, '') })
+  }
+
+  stopRssiMonitor(): void {
+    this.send({ cmd: 'stopRssiMonitor' })
   }
 
   // ── Heart rate parsing & heartbeat timer ──

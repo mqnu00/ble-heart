@@ -10,6 +10,8 @@ export interface AppState {
   lockState: LockState
   lastBeatTime: number
   deviceName: string | null
+  rssi: number | null
+  rssiMonitorStatus: 'idle' | 'monitoring'
 }
 
 class StateManager extends EventEmitter {
@@ -18,7 +20,9 @@ class StateManager extends EventEmitter {
     deviceStatus: 'disconnected',
     lockState: 'unlocked',
     lastBeatTime: 0,
-    deviceName: null
+    deviceName: null,
+    rssi: null,
+    rssiMonitorStatus: 'idle'
   }
 
   // 冷却期：解锁后短时间内不重新锁屏
@@ -48,6 +52,16 @@ class StateManager extends EventEmitter {
 
   setDeviceName(name: string | null) {
     this.state.deviceName = name
+    this.emit('change', this.getState())
+  }
+
+  setRssi(rssi: number | null) {
+    this.state.rssi = rssi
+    this.emit('change', this.getState())
+  }
+
+  setRssiMonitorStatus(status: 'idle' | 'monitoring') {
+    this.state.rssiMonitorStatus = status
     this.emit('change', this.getState())
   }
 

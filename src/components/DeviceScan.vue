@@ -16,6 +16,8 @@
       >
         断开 {{ connectedDeviceName }}
       </el-button>
+      <!-- 附加操作区(如 RSSI 监听状态),由父组件注入 -->
+      <slot name="actions" />
     </div>
 
     <el-table
@@ -35,17 +37,26 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="140" align="center">
+      <el-table-column label="操作" width="160" align="center">
         <template #default="{ row }">
-          <el-button
-            v-if="!isConnected || row.id !== connectedDeviceId"
-            type="primary"
-            size="small"
-            link
-            @click="$emit('connect', row.id)"
-          >
-            连接
-          </el-button>
+          <template v-if="!isConnected || row.id !== connectedDeviceId">
+            <el-button
+              type="primary"
+              size="small"
+              link
+              @click="$emit('connect', row.id)"
+            >
+              连接
+            </el-button>
+            <el-button
+              type="warning"
+              size="small"
+              link
+              @click="$emit('monitor', row.id)"
+            >
+              监听
+            </el-button>
+          </template>
           <el-tag v-else type="success" size="small">已连接</el-tag>
         </template>
       </el-table-column>
@@ -74,6 +85,7 @@ defineEmits<{
   scan: []
   connect: [deviceId: string]
   disconnect: []
+  monitor: [deviceId: string]
 }>()
 
 function rssiTagType(rssi: number): string {
@@ -92,6 +104,8 @@ function rssiTagType(rssi: number): string {
 
 .scan-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 

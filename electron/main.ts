@@ -7,6 +7,7 @@ import { stateManager } from './state'
 import { lockWorkstation, lockDetector } from './system/lock'
 import { triggerUnlock, ensureHodorReady, registerHodor, unregisterHodor } from './system/unlock'
 import { writeHodorResult } from './system/elevate'
+import { rssiMonitor } from './ble/rssi-monitor'
 import { getConfig, setConfig } from './config'
 import { hasPassword } from './system/safe-storage'
 import { registerIpcHandlers, setBleManagerRef } from './ipc-handlers'
@@ -151,6 +152,8 @@ function setupBLEEvents(): void {
   bleManager.on('deviceDisconnected', (reason: string) => {
     stateManager.setDeviceStatus('disconnected')
     stateManager.setDeviceName(null)
+    // 断开后恢复信号丢失锁屏判断
+    rssiMonitor.setConnected(false)
 
     const phase = reconnectManager.phase
 
@@ -187,8 +190,27 @@ function setupBLEEvents(): void {
   bleManager.on('deviceConnected', (device: { id: string; name: string }) => {
     stateManager.setDeviceStatus('connected')
     stateManager.setDeviceName(device.name)
+    // 已连接时设备在场由连接证明,信号丢失不视为弱信号
+    rssiMonitor.setConnected(true)
     // 重连成功 → 停止重连
     reconnectManager.onConnected()
+  })
+
+  // RSSI monitor events → renderer + rssiMonitor
+  bleManager.on('rssiUpdate', (sample: { address: string; name: string; rssi: number; timestamp: number }) => {
+    rssiMonitor.onRssiUpdate(sample.rssi)
+    stateManager.setRssi(sample.rssi)
+    mainWindow?.webContents.send('ble-rssi-update', sample)
+  })
+
+  bleManager.on('rssiMonitorStarted', (address: string) => {
+    console.log('[RSSI] C# monitor started for:', address)
+    mainWindow?.webContents.send('ble-rssi-monitor-started', address)
+  })
+
+  bleManager.on('rssiMonitorStopped', () => {
+    console.log('[RSSI] C# monitor stopped')
+    mainWindow?.webContents.send('ble-rssi-monitor-stopped')
   })
 
   // Helper errors
@@ -250,6 +272,15 @@ function setupBLEIpc(): void {
     } catch (err: any) {
       return { success: false, message: err.message }
     }
+  })
+
+  // RSSI monitor commands
+  ipcMain.on('ble-start-rssi-monitor', (_event, address: string) => {
+    bleManager?.startRssiMonitor(address)
+  })
+
+  ipcMain.on('ble-stop-rssi-monitor', () => {
+    bleManager?.stopRssiMonitor()
   })
 }
 
@@ -357,6 +388,30 @@ function initApp(): void {
 
     if (mainWindow) {
       createTray(mainWindow)
+    }
+
+    // RSSI 监听回调:信号弱 → 锁屏(复用现有锁屏流程)
+    rssiMonitor.onTriggerLock = () => {
+      if (stateManager.onHeartbeatTimeout()) {
+        setTimeout(() => handleLock(), 2000)
+      }
+    }
+    // RSSI 监听回调:信号恢复 → 解锁
+    rssiMonitor.onTriggerUnlock = () => {
+      handleUnlock()
+    }
+
+    // 根据初始配置启动 RSSI 监听(设备唯一,连接或监听共用)
+    const initConfig = getConfig()
+    if (initConfig.targetDeviceId) {
+      rssiMonitor.start(initConfig.targetDeviceId, initConfig.targetDeviceName, {
+        rssiLockThreshold: initConfig.rssiLockThreshold,
+        rssiUnlockThreshold: initConfig.rssiUnlockThreshold,
+        weakTimeoutMs: initConfig.heartbeatTimeout * 1000,
+        unlockConfirmMs: initConfig.unlockDelay * 1000
+      })
+      bleManager?.startRssiMonitor(initConfig.targetDeviceId)
+      stateManager.setRssiMonitorStatus('monitoring')
     }
 
     // 确保 hodor DLL 已注册（需要管理员权限）
