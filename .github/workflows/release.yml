@@ -88,10 +88,12 @@ jobs:
         run: npm run build:helper && npm run build:vite
 
       - name: Package portable (win-unpacked)
-        run: npx electron-builder --dir
+        # --publish never: 关闭 electron-builder 自动发布(CI tag 下会尝试发 Release 但无 GH_TOKEN),
+        # 产物由末尾 action-gh-release 步骤统一发布
+        run: npx electron-builder --dir --publish never
 
       - name: Package NSIS installer
-        run: npx electron-builder
+        run: npx electron-builder --publish never
 
       - name: Zip portable build
         shell: powershell
