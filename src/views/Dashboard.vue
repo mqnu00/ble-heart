@@ -162,11 +162,11 @@ function rssiTagType(rssi: number): string {
 .info-card {
   flex: 1;
   background: $card-bg;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--app-border);
   border-radius: $border-radius;
 
   :deep(.el-card__header) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--app-border);
     color: $text-secondary;
     font-size: 13px;
     padding: 12px 16px;
@@ -184,7 +184,7 @@ function rssiTagType(rssi: number): string {
   padding: 8px 0;
 
   &:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--app-border);
   }
 
   .label {

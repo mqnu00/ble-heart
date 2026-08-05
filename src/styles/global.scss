@@ -1,3 +1,43 @@
+// ── 主题 CSS 变量 ──
+// 亮色(:root 默认)与暗色(html.dark)两套,切换通过 html.dark class 控制。
+// Element Plus 组件暗色由 element-plus/theme-chalk/dark/css-vars.css 处理。
+
+:root {
+  --app-primary: #409eff;
+  --app-success: #67c23a;
+  --app-warning: #e6a23c;
+  --app-danger: #f56c6c;
+  --app-bg: #f5f7fa;
+  --app-card-bg: #ffffff;
+  --app-text: #303133;
+  --app-text-secondary: #909399;
+  --app-border: rgba(0, 0, 0, 0.08);
+  --app-hover: rgba(0, 0, 0, 0.04);
+  --app-header-border: rgba(0, 0, 0, 0.06);
+  --app-scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --app-scrollbar-thumb-hover: rgba(0, 0, 0, 0.35);
+  --app-slider-track: rgba(0, 0, 0, 0.1);
+  --app-slider-stop: rgba(0, 0, 0, 0.25);
+}
+
+html.dark {
+  --app-primary: #409eff;
+  --app-success: #67c23a;
+  --app-warning: #e6a23c;
+  --app-danger: #f56c6c;
+  --app-bg: #1a1a2e;
+  --app-card-bg: #16213e;
+  --app-text: #e0e0e0;
+  --app-text-secondary: #a0a0a0;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-hover: rgba(255, 255, 255, 0.06);
+  --app-header-border: rgba(255, 255, 255, 0.08);
+  --app-scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --app-scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+  --app-slider-track: rgba(255, 255, 255, 0.1);
+  --app-slider-stop: rgba(255, 255, 255, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,8 +46,8 @@
 
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: $bg-color;
-  color: $text-color;
+  background: var(--app-bg);
+  color: var(--app-text);
   overflow: hidden;
   user-select: none;
 }
@@ -27,10 +67,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--app-scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--app-scrollbar-thumb-hover);
 }

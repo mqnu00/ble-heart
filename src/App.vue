@@ -13,6 +13,14 @@
           <el-icon><Setting /></el-icon>
           <span>设置</span>
         </router-link>
+        <el-switch
+          class="theme-switch"
+          :model-value="theme === 'dark'"
+          inline-prompt
+          active-text="暗"
+          inactive-text="亮"
+          @update:model-value="theme = $event ? 'dark' : 'light'"
+        />
       </div>
     </header>
     <main class="app-main">
@@ -22,6 +30,9 @@
 </template>
 
 <script setup lang="ts">
+import { useTheme } from '@/composables/useTheme'
+
+const { theme } = useTheme()
 </script>
 
 <style lang="scss" scoped>
@@ -39,7 +50,7 @@
   padding: 0 24px;
   height: 56px;
   background: $card-bg;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--app-header-border);
   -webkit-app-region: drag;
 }
 
@@ -70,19 +81,23 @@
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--app-hover);
     color: $text-color;
   }
 }
 
 .nav-link-active {
-  background: rgba($primary-color, 0.15);
+  background: color-mix(in srgb, $primary-color 15%, transparent);
   color: $primary-color;
 
   &:hover {
-    background: rgba($primary-color, 0.2);
+    background: color-mix(in srgb, $primary-color 20%, transparent);
     color: $primary-color;
   }
+}
+
+.theme-switch {
+  margin-left: 8px;
 }
 
 .app-main {

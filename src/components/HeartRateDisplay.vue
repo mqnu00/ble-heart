@@ -47,7 +47,7 @@ const displayValue = computed(() => {
   height: 200px;
   border-radius: 50%;
   background: $card-bg;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--app-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,8 +55,8 @@ const displayValue = computed(() => {
 }
 
 .has-signal .hr-circle {
-  border-color: rgba($danger-color, 0.6);
-  box-shadow: 0 0 40px rgba($danger-color, 0.15);
+  border-color: color-mix(in srgb, $danger-color 60%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, $danger-color 15%, transparent);
 }
 
 .hr-pulse {
@@ -68,7 +68,7 @@ const displayValue = computed(() => {
   transition: all 0.3s;
 
   &.animating {
-    border-color: rgba($danger-color, 0.3);
+    border-color: color-mix(in srgb, $danger-color 30%, transparent);
     animation: pulse 1.5s ease-in-out infinite;
   }
 }
@@ -121,7 +121,7 @@ const displayValue = computed(() => {
   color: $text-secondary;
   font-size: 13px;
   padding: 6px 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-hover);
   border-radius: 20px;
 }
 </style>

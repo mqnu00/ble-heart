@@ -510,11 +510,11 @@ async function handleTestUnlock() {
 
 .settings-card {
   background: $card-bg;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--app-border);
   border-radius: $border-radius;
 
   :deep(.el-card__header) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--app-border);
     color: $text-color;
     font-size: 15px;
     font-weight: 600;
@@ -531,7 +531,7 @@ async function handleTestUnlock() {
   &:not(:first-child) {
     margin-top: 20px;
     padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--app-border);
   }
 
   .slider-header {
@@ -560,8 +560,8 @@ async function handleTestUnlock() {
 
   :deep(.el-slider) {
     --el-slider-main-bg-color: #{$primary-color};
-    --el-slider-runway-bg-color: rgba(255, 255, 255, 0.1);
-    --el-slider-stop-bg-color: rgba(255, 255, 255, 0.3);
+    --el-slider-runway-bg-color: var(--app-slider-track);
+    --el-slider-stop-bg-color: var(--app-slider-stop);
   }
 }
 
@@ -572,7 +572,7 @@ async function handleTestUnlock() {
   padding: 12px 0;
 
   &:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--app-border);
   }
 }
 
@@ -614,7 +614,7 @@ async function handleTestUnlock() {
   gap: 8px;
   margin-left: 8px;
   padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid var(--app-border);
 
   .rssi-monitor-name {
     color: $text-secondary;
@@ -632,7 +632,7 @@ async function handleTestUnlock() {
   align-items: center;
   margin-top: 12px;
   padding: 12px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--app-border);
 
   .el-input {
     flex: 1;
@@ -657,7 +657,7 @@ async function handleTestUnlock() {
   padding: 12px 0;
 
   &:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--app-border);
   }
 }
 

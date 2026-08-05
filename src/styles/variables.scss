@@ -1,9 +1,11 @@
-$primary-color: #409eff;
-$success-color: #67c23a;
-$warning-color: #e6a23c;
-$danger-color: #f56c6c;
-$bg-color: #1a1a2e;
-$card-bg: #16213e;
-$text-color: #e0e0e0;
-$text-secondary: #a0a0a0;
+// SCSS 变量引用 CSS 变量,具体值在 styles/global.scss 的 :root / html.dark 中按主题定义。
+// 需要透明度的颜色请用 color-mix(in srgb, $color X%, transparent),勿用 rgba()(Sass 无法编译 var())。
+$primary-color: var(--app-primary);
+$success-color: var(--app-success);
+$warning-color: var(--app-warning);
+$danger-color: var(--app-danger);
+$bg-color: var(--app-bg);
+$card-bg: var(--app-card-bg);
+$text-color: var(--app-text);
+$text-secondary: var(--app-text-secondary);
 $border-radius: 12px;

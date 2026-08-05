@@ -47,7 +47,7 @@ defineEmits<{
   &:not(:first-child) {
     margin-top: 20px;
     padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--app-border);
   }
 
   .slider-header {
@@ -76,8 +76,8 @@ defineEmits<{
 
   :deep(.el-slider) {
     --el-slider-main-bg-color: #{$primary-color};
-    --el-slider-runway-bg-color: rgba(255, 255, 255, 0.1);
-    --el-slider-stop-bg-color: rgba(255, 255, 255, 0.3);
+    --el-slider-runway-bg-color: var(--app-slider-track);
+    --el-slider-stop-bg-color: var(--app-slider-stop);
     --el-slider-button-wrapper-size: 36px;
     --el-slider-button-size: 14px;
   }

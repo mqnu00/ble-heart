@@ -116,11 +116,11 @@ function rssiTagType(rssi: number): string {
     background: transparent;
     --el-table-bg-color: transparent;
     --el-table-tr-bg-color: transparent;
-    --el-table-header-bg-color: rgba(255, 255, 255, 0.03);
-    --el-table-border-color: rgba(255, 255, 255, 0.06);
-    --el-table-text-color: #e0e0e0;
-    --el-table-header-text-color: #a0a0a0;
-    --el-table-row-hover-bg-color: rgba(255, 255, 255, 0.04);
+    --el-table-header-bg-color: var(--app-hover);
+    --el-table-border-color: var(--app-border);
+    --el-table-text-color: var(--app-text);
+    --el-table-header-text-color: var(--app-text-secondary);
+    --el-table-row-hover-bg-color: var(--app-hover);
   }
 }
 

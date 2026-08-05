@@ -48,7 +48,7 @@ const lockText = computed(() => {
   padding: 10px 20px;
   background: $card-bg;
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--app-border);
 }
 
 .status-item {
@@ -74,13 +74,13 @@ const lockText = computed(() => {
 .status-divider {
   width: 1px;
   height: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--app-border);
 }
 
 // Device status
 .status-connected .status-dot {
   background: $success-color;
-  box-shadow: 0 0 6px rgba($success-color, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, $success-color 50%, transparent);
 }
 .status-connected .status-text {
   color: $success-color;
@@ -88,6 +88,7 @@ const lockText = computed(() => {
 
 .status-scanning .status-dot {
   background: $warning-color;
+  box-shadow: 0 0 6px color-mix(in srgb, $warning-color 50%, transparent);
   animation: blink 1s ease-in-out infinite;
 }
 .status-scanning .status-text {
@@ -97,7 +98,7 @@ const lockText = computed(() => {
 // Lock state
 .status-locked .status-dot {
   background: $danger-color;
-  box-shadow: 0 0 6px rgba($danger-color, 0.5);
+  box-shadow: 0 0 6px color-mix(in srgb, $danger-color 50%, transparent);
 }
 .status-locked .status-text {
   color: $danger-color;
