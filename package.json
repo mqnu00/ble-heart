@@ -1,6 +1,6 @@
 {
   "name": "ble-heart",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "BLE心率监测 - Windows自动锁屏/解锁",
   "main": "dist-electron/main.js",
   "scripts": {
