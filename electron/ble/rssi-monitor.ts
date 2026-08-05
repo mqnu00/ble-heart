@@ -72,7 +72,9 @@ export class RssiMonitor extends EventEmitter {
     this._name = name
     this.applyConfig(config)
     this._rssi = null
-    this._lastUpdateTime = Date.now()
+    // 初始为 0:重启后未收到任何广播前不触发"信号丢失"锁屏;
+    // 收到首个 RSSI 采样后由 onRssiUpdate 设置,此后信号丢失才正常锁屏
+    this._lastUpdateTime = 0
     this._weakStartTime = 0
     this._strongStartTime = 0
     this._lockTriggered = false
