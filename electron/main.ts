@@ -217,6 +217,12 @@ function setupBLEEvents(): void {
   bleManager.on('error', (err: Error) => {
     console.error('[BLE] error:', err.message)
   })
+
+  // 蓝牙关闭/禁用 → 通知渲染进程提示用户
+  bleManager.on('bluetoothError', (info: { code: string; message: string }) => {
+    console.warn('[BLE] 蓝牙不可用:', info.code)
+    mainWindow?.webContents.send('ble-bluetooth-error', info)
+  })
 }
 
 /**

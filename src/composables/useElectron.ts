@@ -1,4 +1,5 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import type { AppState, AppConfig, BLEDevice } from '@/types'
 
 export function useElectron() {
@@ -24,6 +25,9 @@ export function useElectron() {
   })
   const devices = ref<BLEDevice[]>([])
   const scanning = ref(false)
+  // 蓝牙不可用状态(由主进程 bluetoothError 事件驱动),null = 蓝牙正常/未知
+  const bluetoothError = ref<{ code: string; message: string } | null>(null)
+  let lastBluetoothToast = 0
   let unsubscribe: (() => void) | null = null
   let flushTimer: ReturnType<typeof setInterval> | null = null
 
@@ -56,6 +60,7 @@ export function useElectron() {
 
     window.electronAPI.onBleScanStarted(() => {
       scanning.value = true
+      bluetoothError.value = null
     })
 
     window.electronAPI.onBleScanStopped(() => {
@@ -161,7 +166,20 @@ export function useElectron() {
     }
   }
 
-  onMounted(async () => { setupStateListener(); await refreshState(); await loadConfig() })
+  // 蓝牙不可用事件:常驻监听(独立于扫描生命周期),设置状态并节流提示
+  function setupBluetoothErrorListener() {
+    if (!window.electronAPI) return
+    window.electronAPI.onBleBluetoothError((info) => {
+      bluetoothError.value = info
+      const now = Date.now()
+      if (now - lastBluetoothToast > 5000) {
+        lastBluetoothToast = now
+        ElMessage.error('检测到蓝牙未开启，请先在 Windows 设置中打开蓝牙')
+      }
+    })
+  }
+
+  onMounted(async () => { setupStateListener(); setupBluetoothErrorListener(); await refreshState(); await loadConfig() })
   onUnmounted(() => {
     unsubscribe?.()
     window.electronAPI?.bleStopScan()
@@ -170,7 +188,7 @@ export function useElectron() {
   })
 
   return {
-    state, config, devices, scanning,
+    state, config, devices, scanning, bluetoothError,
     refreshState, loadConfig,
     startScan, stopScan, connectDevice, disconnectDevice,
     updateConfig, setPassword, clearPassword

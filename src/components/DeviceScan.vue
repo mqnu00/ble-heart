@@ -64,7 +64,8 @@
 
     <div class="empty-hint" v-else>
       <el-icon><Connection /></el-icon>
-      <p>{{ scanning ? '正在搜索蓝牙设备...' : '点击"扫描设备"搜索附近的蓝牙心率设备' }}</p>
+      <p v-if="bluetoothError">检测到蓝牙未开启，请先在 Windows 设置中打开蓝牙</p>
+      <p v-else>{{ scanning ? '正在搜索蓝牙设备...' : '点击"扫描设备"搜索附近的蓝牙心率设备' }}</p>
     </div>
 
   </div>
@@ -79,6 +80,7 @@ defineProps<{
   connectedDeviceId: string
   isConnected: boolean
   connectedDeviceName: string
+  bluetoothError: boolean
 }>()
 
 defineEmits<{

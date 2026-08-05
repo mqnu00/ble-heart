@@ -163,6 +163,11 @@ export class BLEManager extends EventEmitter {
         this.emit('error', new Error(evt.message))
         break
 
+      case 'bluetoothError':
+        console.warn('[BLE] bluetooth error:', evt.code, evt.message)
+        this.emit('bluetoothError', { code: evt.code || '', message: evt.message || '' })
+        break
+
       case 'watchStarted':
         console.log('[BLE] watch started for:', evt.address)
         this.emit('watchStarted', evt.address)

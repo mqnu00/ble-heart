@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
+using Windows.Devices.Radios;
 
 namespace BleHelper;
 
@@ -60,11 +62,22 @@ public sealed class BleScanner : IDisposable
 
     // ── Normal scan ──
 
-    public void Start()
+    /// <summary>
+    /// 蓝牙关闭时 watcher.Start() 会直接抛异常(而非触发 Stopped 事件),
+    /// 此处捕获并上报 bluetoothError 供主进程提示用户。
+    /// </summary>
+    public async Task StartAsync()
     {
         _scannedCount = 0;
-        _scanWatcher.Start();
-        WriteEvent(new BleEvent { Evt = "scanStarted" });
+        try
+        {
+            _scanWatcher.Start();
+            WriteEvent(new BleEvent { Evt = "scanStarted" });
+        }
+        catch (Exception ex)
+        {
+            await ReportWatcherStartErrorAsync(ex);
+        }
     }
 
     public void Stop()
@@ -88,6 +101,7 @@ public sealed class BleScanner : IDisposable
 
     private void OnScanStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
     {
+        ReportBluetoothErrorIfNeeded(args.Error);
         WriteEvent(new BleEvent { Evt = "scanStopped" });
     }
 
@@ -97,12 +111,20 @@ public sealed class BleScanner : IDisposable
     /// Start watching for a specific device address.
     /// When the device is seen in advertisements, emits "deviceFound" and stops watching.
     /// </summary>
-    public void Watch(ulong address)
+    public async Task WatchAsync(ulong address)
     {
         StopWatch();
         _watchAddress = address;
-        _watchWatcher.Start();
-        WriteEvent(new BleEvent { Evt = "watchStarted", Address = BleAddress.ToHex(address) });
+        try
+        {
+            _watchWatcher.Start();
+            WriteEvent(new BleEvent { Evt = "watchStarted", Address = BleAddress.ToHex(address) });
+        }
+        catch (Exception ex)
+        {
+            _watchAddress = null;
+            await ReportWatcherStartErrorAsync(ex);
+        }
     }
 
     /// <summary>
@@ -136,6 +158,7 @@ public sealed class BleScanner : IDisposable
 
     private void OnWatchStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
     {
+        ReportBluetoothErrorIfNeeded(args.Error);
         WriteEvent(new BleEvent { Evt = "watchStopped" });
     }
 
@@ -146,7 +169,7 @@ public sealed class BleScanner : IDisposable
     /// Unlike Watch, this does NOT stop when the device is found — it keeps
     /// reporting rssiUpdate events for every received advertisement.
     /// </summary>
-    public void StartRssiMonitor(ulong address)
+    public async Task StartRssiMonitorAsync(ulong address)
     {
         // 已在监听同一设备 → 不重启 watcher,避免监听中断
         if (_rssiAddress == address && IsRssiMonitoring)
@@ -155,12 +178,20 @@ public sealed class BleScanner : IDisposable
         }
         StopRssiMonitor();
         _rssiAddress = address;
-        _rssiWatcher.Start();
-        WriteEvent(new BleEvent
+        try
         {
-            Evt = "rssiMonitorStarted",
-            Address = BleAddress.ToHex(address)
-        });
+            _rssiWatcher.Start();
+            WriteEvent(new BleEvent
+            {
+                Evt = "rssiMonitorStarted",
+                Address = BleAddress.ToHex(address)
+            });
+        }
+        catch (Exception ex)
+        {
+            _rssiAddress = null;
+            await ReportWatcherStartErrorAsync(ex);
+        }
     }
 
     /// <summary>
@@ -190,10 +221,66 @@ public sealed class BleScanner : IDisposable
 
     private void OnRssiStopped(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementWatcherStoppedEventArgs args)
     {
+        ReportBluetoothErrorIfNeeded(args.Error);
         WriteEvent(new BleEvent { Evt = "rssiMonitorStopped" });
     }
 
     // ── Helpers ──
+
+    /// <summary>
+    /// 蓝牙关闭/禁用时 watcher 停止并携带错误码(RadioNotAvailable 等),
+    /// 此时发 bluetoothError 事件供主进程提示用户。正常停止(Error == Success)不发。
+    /// </summary>
+    private void ReportBluetoothErrorIfNeeded(BluetoothError error)
+    {
+        if (error == BluetoothError.Success) return;
+        WriteEvent(new BleEvent
+        {
+            Evt = "bluetoothError",
+            Code = error.ToString(),
+            Message = $"Bluetooth radio unavailable: {error}"
+        });
+    }
+
+    /// <summary>
+    /// watcher.Start() 抛异常时(常见于蓝牙关闭):查询 radio 状态确认,
+    /// 蓝牙不可用 → bluetoothError,其他原因 → 普通 error。
+    /// </summary>
+    private async Task ReportWatcherStartErrorAsync(Exception ex)
+    {
+        if (await GetRadioErrorAsync() != BluetoothError.Success)
+        {
+            WriteEvent(new BleEvent
+            {
+                Evt = "bluetoothError",
+                Code = BluetoothError.RadioNotAvailable.ToString(),
+                Message = $"Bluetooth radio unavailable: {ex.GetType().Name}"
+            });
+        }
+        else
+        {
+            WriteEvent(new BleEvent { Evt = "error", Message = $"Watcher start failed: {ex.Message}" });
+        }
+    }
+
+    /// <summary>查询蓝牙 radio 状态:关闭/不可用返回 RadioNotAvailable,正常返回 Success。</summary>
+    private static async Task<BluetoothError> GetRadioErrorAsync()
+    {
+        try
+        {
+            var radios = await Radio.GetRadiosAsync();
+            var btRadio = radios.FirstOrDefault(r => r.Kind == RadioKind.Bluetooth);
+            if (btRadio == null || btRadio.State != RadioState.On)
+            {
+                return BluetoothError.RadioNotAvailable;
+            }
+            return BluetoothError.Success;
+        }
+        catch
+        {
+            return BluetoothError.RadioNotAvailable;
+        }
+    }
 
     private void WriteEvent(BleEvent evt)
     {

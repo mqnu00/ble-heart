@@ -42,6 +42,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('ble-rssi-update', (_event, sample) => callback(sample))
   },
 
+  // 蓝牙不可用事件 (main → renderer),独立于扫描生命周期,常驻监听
+  onBleBluetoothError: (callback: (info: { code: string; message: string }) => void) => {
+    ipcRenderer.on('ble-bluetooth-error', (_event, info) => callback(info))
+  },
+
   // RSSI monitor commands
   bleStartRssiMonitor: (address: string) => ipcRenderer.send('ble-start-rssi-monitor', address),
   bleStopRssiMonitor: () => ipcRenderer.send('ble-stop-rssi-monitor'),

@@ -73,6 +73,10 @@ public sealed class BleEvent
     [JsonPropertyName("message")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Message { get; set; }
+
+    [JsonPropertyName("code")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Code { get; set; }
 }
 
 // ── Helpers ──

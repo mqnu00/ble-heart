@@ -10,6 +10,7 @@
         :connected-device-id="config.targetDeviceId"
         :is-connected="state.deviceStatus === 'connected'"
         :connected-device-name="state.deviceName || config.targetDeviceName"
+        :bluetooth-error="!!bluetoothError"
         @scan="handleScan"
         @connect="handleConnect"
         @disconnect="handleDisconnect"
@@ -251,7 +252,7 @@ import DeviceScan from '@/components/DeviceScan.vue'
 import TimeoutSlider from '@/components/TimeoutSlider.vue'
 
 const {
-  state, config, devices, scanning,
+  state, config, devices, scanning, bluetoothError,
   startScan, stopScan, connectDevice, disconnectDevice,
   updateConfig, setPassword, clearPassword
 } = useElectron()

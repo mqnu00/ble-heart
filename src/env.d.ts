@@ -51,6 +51,7 @@ declare global {
       onBleScanStopped: (callback: () => void) => void
       onBleDeviceDiscovered: (callback: (device: { id: string; address: string; name: string; rssi: number }) => void) => void
       onBleRssiUpdate: (callback: (sample: { address: string; name: string; rssi: number; timestamp: number }) => void) => void
+      onBleBluetoothError: (callback: (info: { code: string; message: string }) => void) => void
       removeBleListeners: () => void
 
       // RSSI monitor commands

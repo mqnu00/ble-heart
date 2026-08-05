@@ -32,7 +32,7 @@ while ((line = await Console.In.ReadLineAsync()) != null)
         {
             case "scan":
                 CancelScanTimeout();
-                scanner.Start();
+                await scanner.StartAsync();
                 if (cmd.Timeout > 0)
                 {
                     scanTimeoutCts = new CancellationTokenSource();
@@ -66,7 +66,7 @@ while ((line = await Console.In.ReadLineAsync()) != null)
 
             case "watch":
                 CancelScanTimeout();
-                scanner.Watch(BleAddress.FromHex(cmd.Address));
+                await scanner.WatchAsync(BleAddress.FromHex(cmd.Address));
                 break;
 
             case "stopWatch":
@@ -76,7 +76,7 @@ while ((line = await Console.In.ReadLineAsync()) != null)
             case "monitorRssi":
                 // RSSI monitoring runs independently (its own watcher),
                 // no need to cancel scan timeout or stop scan.
-                scanner.StartRssiMonitor(BleAddress.FromHex(cmd.Address));
+                await scanner.StartRssiMonitorAsync(BleAddress.FromHex(cmd.Address));
                 break;
 
             case "stopRssiMonitor":

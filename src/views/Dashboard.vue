@@ -48,6 +48,13 @@
           <span class="value">
             {{ config.targetDeviceName }}
             <el-tag
+              v-if="bluetoothError"
+              type="danger"
+              size="small"
+              effect="plain"
+            >蓝牙未开启</el-tag>
+            <el-tag
+              v-else
               :type="rssiTagType(state.rssi ?? -100)"
               size="small"
               effect="plain"
@@ -83,7 +90,7 @@ import { useElectron } from '@/composables/useElectron'
 import HeartRateDisplay from '@/components/HeartRateDisplay.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
-const { state, config } = useElectron()
+const { state, config, bluetoothError } = useElectron()
 
 const statusTagType = computed(() => {
   switch (state.value.deviceStatus) {
