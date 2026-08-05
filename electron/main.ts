@@ -20,8 +20,8 @@ let bleManager: BLEManager | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 620,
+    width: 960,
+    height: 800,
     minWidth: 600,
     minHeight: 500,
     frame: true,
