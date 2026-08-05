@@ -15,6 +15,7 @@ export function useElectron() {
   const config = ref<AppConfig>({
     targetDeviceId: '',
     targetDeviceName: '',
+    deviceType: 'rssi-only',
     heartbeatTimeout: 15,
     unlockDelay: 3,
     autoUnlock: false,
@@ -121,7 +122,9 @@ export function useElectron() {
       const device = devices.value.find(d => d.address === address || d.id === address)
       await updateConfig({
         targetDeviceId: address,
-        targetDeviceName: device?.name || 'Unknown'
+        targetDeviceName: device?.name || 'Unknown',
+        // 点"连接"视为心率设备:心率 + 信号双重判断
+        deviceType: 'heart-rate'
       })
     } catch (err: any) {
       state.value.deviceStatus = 'disconnected'

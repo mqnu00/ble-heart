@@ -24,6 +24,7 @@ declare global {
       getConfig: () => Promise<{
         targetDeviceId: string
         targetDeviceName: string
+        deviceType: 'heart-rate' | 'rssi-only'
         heartbeatTimeout: number
         unlockDelay: number
         autoUnlock: boolean

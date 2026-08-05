@@ -9,6 +9,7 @@ import { triggerUnlock, ensureHodorReady, registerHodor, unregisterHodor } from 
 import { writeHodorResult } from './system/elevate'
 import { rssiMonitor } from './ble/rssi-monitor'
 import { getConfig, setConfig } from './config'
+import type { DeviceType } from './config'
 import { hasPassword } from './system/safe-storage'
 import { registerIpcHandlers, setBleManagerRef } from './ipc-handlers'
 import { createTray, destroyTray } from './tray'
@@ -108,10 +109,11 @@ function setupReconnect(): void {
   // 连接错误 → 回到广播监听
   bleManager.on('error', () => {
     reconnectManager.onConnectFailed()
-    // idle 阶段收到连接错误(如启动自动连接失败/设备不在线) → 进入广播监听,设备出现后自动重连
+    // idle 阶段收到连接错误(如启动自动连接失败/设备不在线) → 心率设备进入广播监听,出现后自动重连;
+    // 普通设备不连接、无需重连
     if (reconnectManager.phase === 'idle') {
       const config = getConfig()
-      if (config.targetDeviceId) {
+      if (config.targetDeviceId && config.deviceType === 'heart-rate') {
         reconnectManager.start(config.targetDeviceId, config.targetDeviceName)
       }
     }
@@ -145,6 +147,13 @@ function setupBLEEvents(): void {
   // Heart rate data → update state machine
   bleManager.on('heartRateData', (data: HeartRateData) => {
     stateManager.setHeartRate(data.heartRate)
+    // 普通设备:仅信号判断,心率不参与解锁
+    if (getDeviceType() !== 'heart-rate') return
+    // 心率设备:心率 + 信号都正常才解锁;信号弱则清零连续确认,避免信号缺失时仅靠心率解锁
+    if (!isRssiStrong()) {
+      stateManager.resetUnlockConfirm()
+      return
+    }
     if (stateManager.shouldTriggerUnlock()) {
       handleUnlock()
     }
@@ -309,6 +318,19 @@ function setupBLEIpc(): void {
   })
 }
 
+/**
+ * 当前设备类型:心率设备 = 心率 + 信号双重判断;普通设备 = 仅信号判断。
+ */
+function getDeviceType(): DeviceType {
+  return getConfig().deviceType || 'rssi-only'
+}
+
+/** 当前 RSSI 信号是否强于解锁阈值(信号正常) */
+function isRssiStrong(): boolean {
+  const rssi = stateManager.getState().rssi
+  return rssi !== null && rssi >= getConfig().rssiUnlockThreshold
+}
+
 async function handleLock(): Promise<void> {
   try {
     await lockWorkstation()
@@ -421,8 +443,11 @@ function initApp(): void {
         setTimeout(() => handleLock(), 2000)
       }
     }
-    // RSSI 监听回调:信号恢复 → 解锁
+    // RSSI 监听回调:信号恢复 → 解锁(心率设备需心率也稳定输出,二者都正常才解锁)
     rssiMonitor.onTriggerUnlock = () => {
+      if (getDeviceType() === 'heart-rate' && !stateManager.isHeartRateStable(3, 10000)) {
+        return
+      }
       handleUnlock()
     }
 
@@ -437,8 +462,11 @@ function initApp(): void {
       })
       bleManager?.startRssiMonitor(initConfig.targetDeviceId)
       stateManager.setRssiMonitorStatus('monitoring')
-      // 启动时自动连接设备获取心率;设备不在线 → 连接失败,由 error 兜底进入广播监听
-      bleManager?.connect(initConfig.targetDeviceId)
+      // 心率设备:启动时自动连接获取心率;设备不在线 → 连接失败,由 error 兜底进入广播监听。
+      // 普通设备:仅信号监听,不自动连接(无心率服务,避免连接失败循环)。
+      if (initConfig.deviceType === 'heart-rate') {
+        bleManager?.connect(initConfig.targetDeviceId)
+      }
     }
 
     // 确保 hodor DLL 已注册（需要管理员权限）

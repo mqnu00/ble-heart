@@ -11,6 +11,7 @@ export interface AppState {
 export interface AppConfig {
   targetDeviceId: string
   targetDeviceName: string
+  deviceType: 'heart-rate' | 'rssi-only'
   heartbeatTimeout: number
   unlockDelay: number
   autoUnlock: boolean

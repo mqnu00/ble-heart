@@ -20,6 +20,9 @@
           <!-- RSSI 监听状态,显示在心率设备断开按钮右侧 -->
           <div class="rssi-monitor" v-if="config.targetDeviceId">
             <span class="rssi-monitor-name">{{ config.targetDeviceName }}</span>
+            <el-tag :type="config.deviceType === 'heart-rate' ? 'success' : 'info'" size="small" effect="plain">
+              {{ config.deviceType === 'heart-rate' ? '心率设备' : '普通设备' }}
+            </el-tag>
             <el-tag :type="rssiTagType(state.rssi ?? -100)" size="small" effect="plain">
               {{ state.rssi !== null ? state.rssi + ' dBm' : '等待...' }}
             </el-tag>
@@ -323,7 +326,9 @@ async function handleMonitor(deviceId: string) {
   }
   await updateConfig({
     targetDeviceId: deviceId,
-    targetDeviceName: device.name
+    targetDeviceName: device.name,
+    // 点"监听"视为普通设备:仅信号判断
+    deviceType: 'rssi-only'
   })
   ElMessage.success(`开始监听信号: ${device.name}`)
 }
@@ -331,7 +336,8 @@ async function handleMonitor(deviceId: string) {
 async function handleStopRssi() {
   await updateConfig({
     targetDeviceId: '',
-    targetDeviceName: ''
+    targetDeviceName: '',
+    deviceType: 'rssi-only'
   })
   ElMessage.info('已停止 RSSI 监听')
 }

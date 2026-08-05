@@ -30,6 +30,10 @@ class StateManager extends EventEmitter {
   private unlockConfirmCount = 0
   private unlockConfirmRequired = 3
 
+  // 心率采样历史(时间戳),用于判断心率是否稳定输出(心率设备双重解锁)
+  private beatHistory: number[] = []
+  private static readonly BEAT_HISTORY_MAX = 20
+
   /** 设置解锁确认所需的心率数据次数（由 main.ts 在配置变更时调用） */
   setUnlockDelay(seconds: number): void {
     this.unlockConfirmRequired = Math.max(1, seconds)
@@ -42,7 +46,22 @@ class StateManager extends EventEmitter {
   setHeartRate(rate: number) {
     this.state.heartRate = rate
     this.state.lastBeatTime = Date.now()
+    this.beatHistory.push(this.state.lastBeatTime)
+    if (this.beatHistory.length > StateManager.BEAT_HISTORY_MAX) {
+      this.beatHistory.shift()
+    }
     this.emit('change', this.getState())
+  }
+
+  /**
+   * 心率是否稳定输出:最近 required 次心率采样都落在窗口(windowMs)内。
+   * 用于心率设备"心率 + 信号都正常才解锁"的心率侧判定。
+   */
+  isHeartRateStable(required = 3, windowMs = 10000): boolean {
+    if (this.beatHistory.length < required) return false
+    const now = Date.now()
+    const windowStart = this.beatHistory[this.beatHistory.length - required]
+    return (now - windowStart) <= windowMs
   }
 
   setDeviceStatus(status: DeviceStatus) {
