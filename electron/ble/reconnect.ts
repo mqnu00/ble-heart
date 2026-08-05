@@ -78,7 +78,7 @@ export class ReconnectManager extends EventEmitter {
    */
   onConnectFailed(): void {
     if (this._phase !== 'connecting') return
-    if (!this._targetAddress || !this._targetName) return
+    if (!this._targetAddress) return
 
     console.log(`[Reconnect] 连接失败，回到广播监听`)
     this._phase = 'watching'

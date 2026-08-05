@@ -17,6 +17,8 @@ import type { BLEDeviceInfo } from './ble/types'
 
 let mainWindow: BrowserWindow | null = null
 let bleManager: BLEManager | null = null
+// 重连竞态标志:connecting 阶段收到 remote 断开后,后续到达的 connected 事件不再停止重连
+let pendingRemoteDisconnect = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -103,9 +105,16 @@ function setupReconnect(): void {
     reconnectManager.onDeviceFound(device.address)
   })
 
-  // 连接错误（在 connecting 阶段） → 回到广播监听
+  // 连接错误 → 回到广播监听
   bleManager.on('error', () => {
     reconnectManager.onConnectFailed()
+    // idle 阶段收到连接错误(如启动自动连接失败/设备不在线) → 进入广播监听,设备出现后自动重连
+    if (reconnectManager.phase === 'idle') {
+      const config = getConfig()
+      if (config.targetDeviceId) {
+        reconnectManager.start(config.targetDeviceId, config.targetDeviceName)
+      }
+    }
   })
 
   // 重连状态变化 → 同步到渲染进程
@@ -157,11 +166,13 @@ function setupBLEEvents(): void {
 
     const phase = reconnectManager.phase
 
-    // 重连进行中时，所有断开（包括 reason=user，C# 连接失败内部调用 Disconnect 所致）
-    // 都视为重连流程的一部分，由重连管理器处理。
+    // 重连进行中时，所有断开都视为重连流程的一部分，由重连管理器处理。
     if (phase !== 'idle') {
       if (phase === 'connecting') {
-        // 连接失败 → 回到广播监听
+        // 连接失败（或连接建立后随即断开） → 回到广播监听。
+        // 标记 remote 断开，避免后续到达的 connected 事件错误地停止重连
+        // （设备实际已断开，却把 phase 置回 idle 导致不再重连）。
+        pendingRemoteDisconnect = reason === 'remote'
         reconnectManager.onConnectFailed()
       }
       // watching 阶段收到断开（连接已不存在）→ 忽略，继续监听广播
@@ -188,6 +199,13 @@ function setupBLEEvents(): void {
 
   // Device connected
   bleManager.on('deviceConnected', (device: { id: string; name: string }) => {
+    // 竞态保护:连接建立后设备已断开(disconnected 先于 connected 处理) → 忽略本次连接,
+    // 保持 watching 等待设备广播再次出现后自动重连。
+    if (pendingRemoteDisconnect) {
+      pendingRemoteDisconnect = false
+      console.log('[BLE] 连接建立后设备已断开，继续等待重连')
+      return
+    }
     stateManager.setDeviceStatus('connected')
     stateManager.setDeviceName(device.name)
     // 已连接时设备在场由连接证明,信号丢失不视为弱信号
@@ -241,6 +259,7 @@ function setupBLEIpc(): void {
 
   ipcMain.on('ble-connect', (_event, address: string) => {
     // 用户主动连接新设备 → 取消重连
+    pendingRemoteDisconnect = false
     reconnectManager.cancel()
     bleManager?.connect(address)
   })
@@ -418,6 +437,8 @@ function initApp(): void {
       })
       bleManager?.startRssiMonitor(initConfig.targetDeviceId)
       stateManager.setRssiMonitorStatus('monitoring')
+      // 启动时自动连接设备获取心率;设备不在线 → 连接失败,由 error 兜底进入广播监听
+      bleManager?.connect(initConfig.targetDeviceId)
     }
 
     // 确保 hodor DLL 已注册（需要管理员权限）

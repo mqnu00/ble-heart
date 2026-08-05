@@ -28,7 +28,7 @@ public sealed class BleConnector : IDisposable
 
     public async Task ConnectAsync(ulong address)
     {
-        Disconnect(); // ensure clean state
+        Disconnect(notify: false); // ensure clean state (internal reset, do not broadcast)
 
         _device = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
         if (_device == null)
@@ -44,7 +44,7 @@ public sealed class BleConnector : IDisposable
         if (svcResult.Status != GattCommunicationStatus.Success || svcResult.Services.Count == 0)
         {
             WriteEvent(new BleEvent { Evt = "error", Message = "Heart Rate service (180D) not found" });
-            Disconnect();
+            Disconnect(notify: false);
             return;
         }
         _service = svcResult.Services[0];
@@ -54,7 +54,7 @@ public sealed class BleConnector : IDisposable
         if (charResult.Status != GattCommunicationStatus.Success || charResult.Characteristics.Count == 0)
         {
             WriteEvent(new BleEvent { Evt = "error", Message = "Heart Rate Measurement characteristic (2A37) not found" });
-            Disconnect();
+            Disconnect(notify: false);
             return;
         }
         _characteristic = charResult.Characteristics[0];
@@ -65,7 +65,7 @@ public sealed class BleConnector : IDisposable
         if (cccdStatus != GattCommunicationStatus.Success)
         {
             WriteEvent(new BleEvent { Evt = "error", Message = "Failed to subscribe to HR notifications" });
-            Disconnect();
+            Disconnect(notify: false);
             return;
         }
 
@@ -79,7 +79,13 @@ public sealed class BleConnector : IDisposable
         });
     }
 
-    public void Disconnect()
+    /// <summary>
+    /// 断开当前连接并清理资源。
+    /// notify=true(默认)时广播 disconnected(reason=user),用于用户主动断开;
+    /// notify=false 用于内部清理(ConnectAsync 开头重置、连接失败清理),
+    /// 此时失败已由 error 事件通知,避免干扰主进程重连状态机。
+    /// </summary>
+    public void Disconnect(bool notify = true)
     {
         if (_characteristic != null)
         {
@@ -100,7 +106,10 @@ public sealed class BleConnector : IDisposable
             _device.Dispose();
             _device = null;
 
-            WriteEvent(new BleEvent { Evt = "disconnected", Address = addr, Reason = "user" });
+            if (notify)
+            {
+                WriteEvent(new BleEvent { Evt = "disconnected", Address = addr, Reason = "user" });
+            }
         }
     }
 
