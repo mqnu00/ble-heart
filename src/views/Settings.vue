@@ -141,7 +141,8 @@
           <div class="setting-info">
             <span class="setting-label">Windows 登录密码</span>
             <span class="setting-desc">
-              用于自动解锁，密码使用 DPAPI 加密存储
+              用于自动解锁，密码使用 DPAPI 加密存储。
+              账户名无需填写，解锁时自动使用当前 Windows 登录账户
             </span>
           </div>
           <div class="password-actions">
